@@ -1,38 +1,10 @@
 """Pydantic schemas and data models for chat functionality."""
 
 import uuid
-from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
-
-class Language(StrEnum):
-    """Supported languages for tutoring sessions."""
-
-    EN = "english"
-    DE = "german"
-    PL = "polish"
-    UA = "ukrainian"
-
-
-class Level(StrEnum):
-    """CEFR language proficiency levels."""
-
-    A1 = "A1"
-    A2 = "A2"
-    B1 = "B1"
-    B2 = "B2"
-    C1 = "C1"
-    C2 = "C2"
-
-
-class ErrorType(StrEnum):
-    """Types of language errors that can be corrected."""
-
-    GRAMMAR = "GRAMMAR"
-    VOCABULARY = "VOCABULARY"
-    SPELLING = "SPELLING"
-    PUNCTUATION = "PUNCTUATION"
+from backend.enums import ErrorType, Language, Level
 
 
 class Correction(BaseModel):
@@ -46,7 +18,6 @@ class Correction(BaseModel):
     @field_validator("explanation")
     @classmethod
     def validate_explanation_length(cls, v: list[str]) -> list[str]:
-        """Validate explanation has exactly 2 elements."""
         if len(v) != 2:
             msg = "Explanation must have exactly 2 elements: [category, description]"
             raise ValueError(msg)
@@ -64,7 +35,6 @@ class ChatRequest(BaseModel):
     @field_validator("session_id")
     @classmethod
     def validate_session_id_format(cls, v: str) -> str:
-        """Validate session_id is a valid UUID format."""
         try:
             uuid.UUID(v)
         except ValueError as e:
