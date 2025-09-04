@@ -1,15 +1,33 @@
 """FastAPI application for Multilingual AI Tutor."""
 
 import sys
+from collections.abc import Callable
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
+from backend.api.v1.chat import router as chat_router
+from backend.api.v1.health import router as health_router
+from backend.api.v1.metrics import router as metrics_router
 from backend.dependencies import get_config
 
 
+class RequestSizeMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app: FastAPI, max_size_bytes: int) -> None:
+        super().__init__(app)
+        self.max_size = max_size_bytes
+
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:
+        if request.headers.get("content-length"):
+            content_length = int(request.headers["content-length"])
+            if content_length > self.max_size:
+                raise HTTPException(413, "Request too large")
+        return await call_next(request)
+
+
 def create_app() -> FastAPI:
-    """Create and configure the FastAPI application."""
+    """Create and configure FastAPI application."""
     config = get_config()
 
     # Disable docs endpoints in production environment
@@ -31,6 +49,12 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST"],
         allow_headers=["Content-Type", "Authorization", "Accept", "Origin"],
     )
+
+    app.add_middleware(RequestSizeMiddleware, max_size_bytes=config.max_request_size_mb * 1024 * 1024)
+
+    app.include_router(health_router, prefix="/api/v1")
+    app.include_router(chat_router, prefix="/api/v1")
+    app.include_router(metrics_router, prefix="/api/v1")
 
     return app
 

@@ -163,3 +163,132 @@ ENVIRONMENT=ci
         # Invalid language not in enum
         with pytest.raises(ValueError, match="SUPPORTED_LANGUAGES contains unsupported language.*not in Language enum"):
             AppConfig(openai_api_key="sk-test", supported_languages=["english", "FR"])
+
+    def test_supported_languages_validates_empty_list(self) -> None:
+        """Test supported languages cannot be empty."""
+        with pytest.raises(ValueError, match="SUPPORTED_LANGUAGES cannot be empty"):
+            AppConfig(openai_api_key="sk-test", supported_languages=[])
+
+    def test_supported_languages_parses_comma_separated_string(self) -> None:
+        """Test supported languages can parse comma-separated string."""
+        config = AppConfig(openai_api_key="sk-test", supported_languages="english,german,polish")
+        assert config.supported_languages == ["english", "german", "polish"]
+
+        # Test with extra spaces
+        config = AppConfig(openai_api_key="sk-test", supported_languages="english, german , polish")
+        assert config.supported_languages == ["english", "german", "polish"]
+
+    def test_cors_origins_validates_protocol_requirement(self) -> None:
+        """Test CORS origins must start with http:// or https://."""
+        # Valid origins should work
+        config = AppConfig(openai_api_key="sk-test", cors_origins=["http://localhost:3000", "https://example.com"])
+        assert config.cors_origins == ["http://localhost:3000", "https://example.com"]
+
+        # Invalid origins without protocol should fail
+        with pytest.raises(
+            ValueError, match="CORS_ORIGINS contains invalid origin.*that must start with http:// or https://"
+        ):
+            AppConfig(openai_api_key="sk-test", cors_origins=["localhost:3000"])
+
+        with pytest.raises(
+            ValueError, match="CORS_ORIGINS contains invalid origin.*that must start with http:// or https://"
+        ):
+            AppConfig(openai_api_key="sk-test", cors_origins=["ftp://example.com"])
+
+    def test_cors_origins_parses_json_string(self) -> None:
+        """Test CORS origins can parse JSON string format."""
+        json_origins = '["http://localhost:3000", "https://example.com"]'
+        config = AppConfig(openai_api_key="sk-test", cors_origins=json_origins)
+        assert config.cors_origins == ["http://localhost:3000", "https://example.com"]
+
+    def test_cors_origins_handles_malformed_json(self) -> None:
+        """Test CORS origins handles malformed JSON gracefully."""
+        # Malformed JSON should raise ValidationError
+        with pytest.raises(ValueError):  # JSON parsing error should bubble up
+            AppConfig(openai_api_key="sk-test", cors_origins='["http://localhost:3000"')  # Missing closing bracket
+
+    def test_max_request_size_mb_boundary_values(self) -> None:
+        """Test max request size validation at boundary values."""
+        # Valid positive values
+        config1 = AppConfig(openai_api_key="sk-test", max_request_size_mb=1)
+        config2 = AppConfig(openai_api_key="sk-test", max_request_size_mb=100)
+
+        assert config1.max_request_size_mb == 1
+        assert config2.max_request_size_mb == 100
+
+        # Zero should fail
+        with pytest.raises(ValueError, match="MAX_REQUEST_SIZE_MB must be positive"):
+            AppConfig(openai_api_key="sk-test", max_request_size_mb=0)
+
+        # Negative should fail
+        with pytest.raises(ValueError, match="MAX_REQUEST_SIZE_MB must be positive"):
+            AppConfig(openai_api_key="sk-test", max_request_size_mb=-1)
+
+    def test_environment_validation_case_sensitivity(self) -> None:
+        """Test environment validation is case sensitive."""
+        # Valid environments (lowercase)
+        config1 = AppConfig(openai_api_key="sk-test", environment="dev")
+        config2 = AppConfig(openai_api_key="sk-test", environment="prod")
+        config3 = AppConfig(openai_api_key="sk-test", environment="ci")
+
+        assert config1.environment == "dev"
+        assert config2.environment == "prod"
+        assert config3.environment == "ci"
+
+        # Invalid environments (wrong case or invalid values)
+        with pytest.raises(ValueError):
+            AppConfig(openai_api_key="sk-test", environment="DEV")  # Uppercase
+
+        with pytest.raises(ValueError):
+            AppConfig(openai_api_key="sk-test", environment="production")  # Not in allowed list
+
+        with pytest.raises(ValueError):
+            AppConfig(openai_api_key="sk-test", environment="test")  # Not in allowed list
+
+    def test_openai_api_key_edge_cases(self) -> None:
+        """Test OpenAI API key validation edge cases."""
+        # Minimum valid key (just starts with sk-)
+        config = AppConfig(openai_api_key="sk-")
+        assert config.openai_api_key == "sk-"
+
+        # Various invalid formats
+        invalid_keys = [
+            "sk",  # Too short
+            "SK-test",  # Wrong case
+            "pk-test",  # Wrong prefix
+            "test-sk-key",  # sk- not at start
+            "",  # Empty string
+            "bearer sk-test",  # Contains sk- but doesn't start with it
+        ]
+
+        for invalid_key in invalid_keys:
+            with pytest.raises(ValueError, match="OPENAI_API_KEY must start with 'sk-'"):
+                AppConfig(openai_api_key=invalid_key)
+
+    def test_openai_temperature_precision_handling(self) -> None:
+        """Test OpenAI temperature handles floating point precision."""
+        # Test precise boundary values
+        config1 = AppConfig(openai_api_key="sk-test", openai_temperature=0.0)
+        config2 = AppConfig(openai_api_key="sk-test", openai_temperature=2.0)
+        config3 = AppConfig(openai_api_key="sk-test", openai_temperature=1.999999)
+
+        assert config1.openai_temperature == 0.0
+        assert config2.openai_temperature == 2.0
+        assert config3.openai_temperature == 1.999999
+
+        # Test values just outside boundaries
+        with pytest.raises(ValueError):
+            AppConfig(openai_api_key="sk-test", openai_temperature=-0.000001)
+
+        with pytest.raises(ValueError):
+            AppConfig(openai_api_key="sk-test", openai_temperature=2.000001)
+
+    def test_config_model_config_settings(self) -> None:
+        """Test Pydantic model configuration settings are correct."""
+        # Test that extra fields are ignored (based on extra="ignore")
+        config_with_extra = AppConfig(
+            openai_api_key="sk-test",
+            unknown_field="should_be_ignored",  # This should not raise an error
+        )
+        assert config_with_extra.openai_api_key == "sk-test"
+        assert not hasattr(config_with_extra, "unknown_field")  # Extra field should be ignored

@@ -30,6 +30,9 @@ class AppConfig(BaseSettings):
         default=["english", "ukrainian", "polish", "german"], description="List of supported language codes"
     )
 
+    # Request validation settings
+    max_request_size_mb: int = Field(default=1, description="Maximum request size in MB")
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @field_validator("environment")
@@ -95,4 +98,11 @@ class AppConfig(BaseSettings):
                 raise ValueError(
                     f"CORS_ORIGINS contains invalid origin '{origin}' that must start with http:// or https://"
                 )
+        return v
+
+    @field_validator("max_request_size_mb")
+    @classmethod
+    def validate_max_request_size_positive(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("MAX_REQUEST_SIZE_MB must be positive")
         return v
