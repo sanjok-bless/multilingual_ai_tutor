@@ -4,7 +4,7 @@ from enum import StrEnum
 
 
 class Language(StrEnum):
-    """Supported languages for tutoring sessions."""
+    """Supported languages."""
 
     EN = "english"
     DE = "german"

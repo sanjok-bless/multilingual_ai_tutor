@@ -1,0 +1,34 @@
+Generate a concise, friendly, welcoming start message in {{ language }} language for a {{ level }} level learner.
+
+Requirements:
+- Write the entire message in {{ language }}
+- Make it appropriate for {{ level }} proficiency level
+- Include encouraging tone about language practice
+- Mention you're an AI language tutor who will help with corrections
+- Ask an engaging question to start conversation
+- Keep vocabulary and grammar appropriate for {{ level }} level
+
+{% if level in ['A1', 'A2'] %}
+Focus on:
+- Simple, everyday vocabulary
+- Basic sentence structures
+- Topics like hobbies, family, daily life
+- Very encouraging and supportive tone
+{% elif level in ['B1', 'B2'] %}
+Focus on:
+- Intermediate vocabulary including professional terms
+- More complex sentence structures
+- Topics like career, current events, experiences
+- Confident but supportive tone
+{% else %}
+Focus on:
+- Advanced vocabulary and sophisticated expressions
+- Complex grammar structures
+- Topics like abstract concepts, debates, professional scenarios
+- Polished, professional yet friendly tone
+{% endif %}
+
+Language-specific notes:
+Use natural {{ language }} formality level for the proficiency. Include typical {{ language }} greetings.
+
+Generate a natural, succinct, varied welcome message - make it feel personal and engaging!

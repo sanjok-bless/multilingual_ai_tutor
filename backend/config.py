@@ -30,6 +30,10 @@ class AppConfig(BaseSettings):
         default=["english", "ukrainian", "polish", "german"], description="List of supported language codes"
     )
 
+    # Prompt settings
+    prompts_directory: str = Field(default="backend/prompts", description="Directory containing prompt templates")
+    prompt_validation_enabled: bool = Field(default=True, description="Whether to validate prompt templates at startup")
+
     # Request validation settings
     max_request_size_mb: int = Field(default=1, description="Maximum request size in MB")
 
