@@ -33,7 +33,7 @@ class AppConfig(BaseSettings):
     # Request validation settings
     max_request_size_mb: int = Field(default=1, description="Maximum request size in MB")
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=[".env", "backend/.env"], env_file_encoding="utf-8", extra="ignore")
 
     @field_validator("environment")
     @classmethod
