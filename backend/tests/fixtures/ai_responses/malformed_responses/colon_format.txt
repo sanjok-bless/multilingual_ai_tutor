@@ -1,0 +1,3 @@
+AI Response: Text
+Corrections: []
+Next Phrase: Question

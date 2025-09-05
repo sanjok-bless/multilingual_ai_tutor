@@ -1,0 +1,13 @@
+## 1. NEXT_PHRASE
+"Visual aids are great! What makes the information feel too complex?"
+
+## 2. AI_RESPONSE
+Yes**,** I created several slides with charts**,** but I'm struggling with explaining complex information in a simple way.
+
+## 3. CORRECTIONS
+[{
+    "original": "Yes I created several slides with charts but I'm struggling",
+    "corrected": "Yes, I created several slides with charts, but I'm struggling",
+    "explanation": ["Punctuation", "Missing commas after 'Yes' and before 'but' for proper sentence structure"],
+    "error_type": "PUNCTUATION"
+}]

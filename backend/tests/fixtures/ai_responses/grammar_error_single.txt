@@ -1,0 +1,13 @@
+## 1. NEXT_PHRASE
+"What's your presentation about?"
+
+## 2. AI_RESPONSE
+I have **an** important meeting tomorrow and I need **to** practice my presentation skills.
+
+## 3. CORRECTIONS
+[{
+    "original": "I have important meeting tomorrow and I need practice my presentation skills",
+    "corrected": "I have an important meeting tomorrow and I need to practice my presentation skills",
+    "explanation": ["Grammar", "Added article 'an' before vowel sound and infinitive 'to' required after 'need'"],
+    "error_type": "GRAMMAR"
+}]

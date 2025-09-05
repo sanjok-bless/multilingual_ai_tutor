@@ -1,0 +1,18 @@
+## 1. NEXT_PHRASE
+"Those are very valid concerns! Have you prepared any visual aids?"
+
+## 2. AI_RESPONSE
+I want **to** make sure my pronunciation is clear and I don't make grammar mistakes when I explain the data. Also, I'm not confident about **answering** questions from **the** audience.
+
+## 3. CORRECTIONS
+[{
+    "original": "I want make sure",
+    "corrected": "I want to make sure",
+    "explanation": ["Grammar", "Infinitive marker 'to' required after 'want'"],
+    "error_type": "GRAMMAR"
+}, {
+    "original": "about answer questions",
+    "corrected": "about answering questions",
+    "explanation": ["Vocabulary", "Gerund 'answering' required after preposition 'about'"],
+    "error_type": "VOCABULARY"
+}]

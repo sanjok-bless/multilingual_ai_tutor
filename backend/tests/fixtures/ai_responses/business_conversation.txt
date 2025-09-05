@@ -1,0 +1,13 @@
+## 1. NEXT_PHRASE
+"Excellent feedback from your colleague! Here are quick tips for tomorrow: Take deep breaths before starting."
+
+## 2. AI_RESPONSE
+I tried **practicing** with my colleague yesterday, but she said I speak too fast and my voice is too quiet. I think I do this because I'm nervous. How can I improve this for tomorrow?
+
+## 3. CORRECTIONS
+[{
+    "original": "I tried practice with my colleague yesterday",
+    "corrected": "I tried practicing with my colleague yesterday",
+    "explanation": ["Grammar", "Gerund 'practicing' required after 'try' when referring to an attempted action"],
+    "error_type": "GRAMMAR"
+}]

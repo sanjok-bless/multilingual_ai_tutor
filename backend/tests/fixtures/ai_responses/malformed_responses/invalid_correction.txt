@@ -1,0 +1,13 @@
+## 1. NEXT_PHRASE
+"What time is your meeting?"
+
+## 2. AI_RESPONSE
+I have a meeting tomorrow.
+
+## 3. CORRECTIONS
+[{
+    "original": "",
+    "corrected": "I have a meeting",
+    "explanation": "",
+    "error_type": "INVALID_TYPE"
+}]

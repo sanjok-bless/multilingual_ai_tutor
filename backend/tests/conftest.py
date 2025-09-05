@@ -1,8 +1,13 @@
 """Pytest configuration and shared fixtures for backend tests."""
 
+from collections.abc import Callable
+from pathlib import Path
+from unittest.mock import Mock
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from openai.types.chat import ChatCompletion
 
 from backend.config import AppConfig
 from backend.dependencies import get_config
@@ -51,3 +56,55 @@ def app(mock_config: AppConfig) -> FastAPI:
 @pytest.fixture
 def client(app: FastAPI) -> TestClient:
     return TestClient(app)
+
+
+@pytest.fixture
+def ai_response_loader() -> Callable[[str], str]:
+    """Load AI response fixtures from files."""
+    fixtures_dir = Path(__file__).parent / "fixtures" / "ai_responses"
+
+    def _load(scenario: str) -> str:
+        """Load AI response fixture by scenario name."""
+        # Handle malformed responses in subdirectory
+        if scenario.startswith("malformed_"):
+            scenario_file = scenario[len("malformed_") :]  # Remove prefix
+            fixture_path = fixtures_dir / "malformed_responses" / f"{scenario_file}.txt"
+        else:
+            fixture_path = fixtures_dir / f"{scenario}.txt"
+
+        if not fixture_path.exists():
+            raise FileNotFoundError(f"AI response fixture not found: {fixture_path}")
+
+        return fixture_path.read_text(encoding="utf-8")
+
+    return _load
+
+
+@pytest.fixture
+def mock_openai_response() -> Callable[[str, int], ChatCompletion]:
+    """Create mock OpenAI ChatCompletion responses."""
+
+    def _create(content: str, tokens: int = 100) -> ChatCompletion:
+        """Create a mock OpenAI ChatCompletion response."""
+        mock_response = Mock(spec=ChatCompletion)
+
+        # Mock the message structure
+        mock_message = Mock()
+        mock_message.content = content
+
+        mock_choice = Mock()
+        mock_choice.message = mock_message
+
+        mock_response.choices = [mock_choice]
+
+        # Mock usage information
+        mock_usage = Mock()
+        mock_usage.prompt_tokens = tokens // 2
+        mock_usage.completion_tokens = tokens // 2
+        mock_usage.total_tokens = tokens
+
+        mock_response.usage = mock_usage
+
+        return mock_response
+
+    return _create

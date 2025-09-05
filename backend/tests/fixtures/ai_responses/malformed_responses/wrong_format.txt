@@ -1,0 +1,3 @@
+**Corrected:** I have a meeting tomorrow.
+**Explanation:** You need to add 'a' before meeting.
+**What's next:** What time is your meeting?

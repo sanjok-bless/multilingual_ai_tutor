@@ -1,0 +1,13 @@
+## 1. NEXT_PHRASE
+"How many emails do you typically get in a workday?"
+
+## 2. AI_RESPONSE
+I **receive** emails every day.
+
+## 3. CORRECTIONS
+[{
+    "original": "I recieve emails every day",
+    "corrected": "I receive emails every day",
+    "explanation": ["Spelling", "Spelling error: 'recieve' should be 'receive' (i before e except after c rule exception)"],
+    "error_type": "SPELLING"
+}]

@@ -1,0 +1,13 @@
+## 1. NEXT_PHRASE
+"What time is your meeting?"
+
+## 2. AI_RESPONSE
+I have **a** meeting tomorrow.
+
+## 3. CORRECTIONS
+[{
+    "original": "I have meeting tomorrow"
+    "corrected": "I have a meeting tomorrow",
+    "explanation": ["Grammar", "Missing article 'a' before noun 'meeting'"]
+    "error_type": "GRAMMAR"  // Missing comma, broken JSON
+}]

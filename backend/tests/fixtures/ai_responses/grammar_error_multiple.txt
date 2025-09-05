@@ -1,0 +1,23 @@
+## 1. NEXT_PHRASE
+"That sounds like an exciting challenge! What specific aspects concern you most?"
+
+## 2. AI_RESPONSE
+**It's** about **a** new marketing strategy **to** increase sales in Q4. I'm **worried** about my English because **the** audience will be international.
+
+## 3. CORRECTIONS
+[{
+    "original": "Its about new marketing strategy for increase sales in Q4",
+    "corrected": "It's about a new marketing strategy to increase sales in Q4",
+    "explanation": ["Grammar", "It's (contraction) vs its (possessive), article needed, infinitive form"],
+    "error_type": "GRAMMAR"
+}, {
+    "original": "I'm worry about my English",
+    "corrected": "I'm worried about my English",
+    "explanation": ["Grammar", "Adjective form 'worried' required after 'be' verb"],
+    "error_type": "GRAMMAR"
+}, {
+    "original": "because audience will be international",
+    "corrected": "because the audience will be international",
+    "explanation": ["Grammar", "Definite article 'the' needed for specific group you're referring to"],
+    "error_type": "GRAMMAR"
+}]

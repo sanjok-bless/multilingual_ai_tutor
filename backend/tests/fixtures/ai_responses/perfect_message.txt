@@ -1,0 +1,8 @@
+## 1. NEXT_PHRASE
+"What kind of business does your company operate in?"
+
+## 2. AI_RESPONSE
+That's excellent! Your English is perfect in that sentence.
+
+## 3. CORRECTIONS
+[]
