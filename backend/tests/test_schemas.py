@@ -9,10 +9,10 @@ from backend.chat.schemas import (
     ChatRequest,
     ChatResponse,
     Correction,
-    ErrorType,
-    Language,
-    Level,
+    StartMessageRequest,
+    StartMessageResponse,
 )
+from backend.enums import ErrorType, Language, Level
 
 
 class TestLanguageEnum:
@@ -412,3 +412,82 @@ class TestMultilingualContent:
         assert "🌟" in request.message
         assert "Привіт" in request.message
         assert request.language == Language.UA
+
+
+class TestStartMessageRequestModel:
+    """Test StartMessageRequest Pydantic model."""
+
+    def test_valid_start_message_request_creation(self) -> None:
+        """Test valid start message request model creation."""
+        session_id = str(uuid.uuid4())
+        request = StartMessageRequest(
+            language=Language.EN,
+            level=Level.B1,
+            session_id=session_id,
+        )
+
+        assert request.language == Language.EN
+        assert request.level == Level.B1
+        assert request.session_id == session_id
+
+    def test_start_message_request_requires_all_fields(self) -> None:
+        """Test start message request requires all fields."""
+        with pytest.raises(ValidationError):
+            StartMessageRequest(
+                language=Language.EN,
+                # Missing level and session_id
+            )
+
+    def test_start_message_request_validates_uuid_session_id_format(self) -> None:
+        """Test start message request validates UUID session_id format."""
+        # Invalid UUID should fail
+        with pytest.raises(ValidationError) as exc_info:
+            StartMessageRequest(
+                language=Language.EN,
+                level=Level.B1,
+                session_id="not-a-uuid",
+            )
+        assert "session_id must be a valid UUID format" in str(exc_info.value)
+
+
+class TestStartMessageResponseModel:
+    """Test StartMessageResponse Pydantic model."""
+
+    def test_valid_start_message_response_creation(self) -> None:
+        """Test valid start message response model creation."""
+        session_id = str(uuid.uuid4())
+        response = StartMessageResponse(
+            message="Hello! I'm your AI language tutor. Ready to practice English?",
+            session_id=session_id,
+            tokens_used=25,
+        )
+
+        assert response.message == "Hello! I'm your AI language tutor. Ready to practice English?"
+        assert response.session_id == session_id
+        assert response.tokens_used == 25
+
+    def test_start_message_response_requires_all_fields(self) -> None:
+        """Test start message response requires all fields."""
+        with pytest.raises(ValidationError):
+            StartMessageResponse(
+                message="Hello!",
+                # Missing session_id and tokens_used
+            )
+
+    def test_start_message_response_validates_non_empty_message(self) -> None:
+        """Test start message response validates non-empty message."""
+        with pytest.raises(ValidationError):
+            StartMessageResponse(
+                message="",
+                session_id=str(uuid.uuid4()),
+                tokens_used=10,
+            )
+
+    def test_start_message_response_validates_non_negative_tokens(self) -> None:
+        """Test start message response validates non-negative token counts."""
+        with pytest.raises(ValidationError):
+            StartMessageResponse(
+                message="Hello!",
+                session_id=str(uuid.uuid4()),
+                tokens_used=-5,
+            )

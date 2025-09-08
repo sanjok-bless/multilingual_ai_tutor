@@ -1,8 +1,4 @@
-"""Tests for LangChain client integration with OpenAI API.
-
-This module tests the LangChain client wrapper for OpenAI integration,
-including response parsing, error handling, and token usage tracking.
-"""
+"""Tests for LangChain client integration with OpenAI API."""
 
 import os
 from collections.abc import Callable
@@ -13,7 +9,7 @@ import pytest
 from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
 
-from backend.chat.schemas import ChatRequest, ChatResponse
+from backend.chat.schemas import ChatRequest, ChatResponse, StartMessageRequest, StartMessageResponse
 from backend.config import AppConfig
 from backend.enums import ErrorType, Language, Level
 from backend.errors import LLMError
@@ -279,6 +275,64 @@ class TestLangChainClient:
         sig = inspect.signature(LangChainClient.__init__)
         assert "config" in sig.parameters
         assert "langchain_client" in sig.parameters
+
+    # Start Message Tests
+    async def test_generate_start_message_basic_functionality(
+        self, mock_config: AppConfig, mock_langchain_client: Mock
+    ) -> None:
+        """Test basic functionality of generate_start_message method."""
+        # Setup mock response
+        mock_ai_response = self.create_mock_langchain_response("Hello! Ready to practice English?", tokens=20)
+        mock_langchain_client.ainvoke.return_value = mock_ai_response
+
+        # Create request
+        request = StartMessageRequest(language=Language.EN, level=Level.B1, session_id=str(uuid4()))
+
+        # Test the method
+        client = LangChainClient(config=mock_config, langchain_client=mock_langchain_client)
+        response = await client.generate_start_message(request)
+
+        # Verify response structure
+        assert isinstance(response, StartMessageResponse)
+        assert response.message == "Hello! Ready to practice English?"
+        assert response.session_id == request.session_id
+        assert response.tokens_used == 20
+
+    async def test_generate_start_message_handles_llm_errors(
+        self, mock_config: AppConfig, mock_langchain_client: Mock
+    ) -> None:
+        """Test that LLM errors are properly handled."""
+        # Setup mock to raise exception
+        mock_langchain_client.ainvoke.side_effect = Exception("OpenAI API Error")
+
+        request = StartMessageRequest(language=Language.EN, level=Level.B1, session_id=str(uuid4()))
+        client = LangChainClient(config=mock_config, langchain_client=mock_langchain_client)
+
+        # Should raise LLMError
+        with pytest.raises(LLMError) as exc_info:
+            await client.generate_start_message(request)
+
+        assert "Start message generation failed" in str(exc_info.value)
+
+    @pytest.mark.parametrize(
+        "language,level", [(Language.EN, Level.B1), (Language.DE, Level.C2), (Language.UA, Level.A1)]
+    )
+    async def test_generate_start_message_different_languages_levels(
+        self, mock_config: AppConfig, mock_langchain_client: Mock, language: Language, level: Level
+    ) -> None:
+        """Test generate_start_message works with different language/level combinations."""
+        # Setup mock response
+        mock_ai_response = self.create_mock_langchain_response(f"Hello in {language.value}!", tokens=25)
+        mock_langchain_client.ainvoke.return_value = mock_ai_response
+
+        request = StartMessageRequest(language=language, level=level, session_id=str(uuid4()))
+        client = LangChainClient(config=mock_config, langchain_client=mock_langchain_client)
+        response = await client.generate_start_message(request)
+
+        # Verify response is valid
+        assert isinstance(response, StartMessageResponse)
+        assert len(response.message.strip()) > 0
+        assert response.tokens_used == 25
 
 
 class TestLangChainClientIntegration:

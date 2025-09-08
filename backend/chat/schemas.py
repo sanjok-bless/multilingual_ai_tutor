@@ -7,6 +7,16 @@ from pydantic import BaseModel, Field, field_validator
 from backend.enums import ErrorType, Language, Level
 
 
+def _validate_uuid_format(v: str) -> str:
+    """Validate that string is a valid UUID format."""
+    try:
+        uuid.UUID(v)
+    except ValueError as e:
+        msg = "session_id must be a valid UUID format"
+        raise ValueError(msg) from e
+    return v
+
+
 class Correction(BaseModel):
     """Model for individual language corrections."""
 
@@ -35,12 +45,7 @@ class ChatRequest(BaseModel):
     @field_validator("session_id")
     @classmethod
     def validate_session_id_format(cls, v: str) -> str:
-        try:
-            uuid.UUID(v)
-        except ValueError as e:
-            msg = "session_id must be a valid UUID format"
-            raise ValueError(msg) from e
-        return v
+        return _validate_uuid_format(v)
 
 
 class ChatResponse(BaseModel):
@@ -49,5 +54,26 @@ class ChatResponse(BaseModel):
     ai_response: str = Field(..., min_length=1, description="AI's natural explanation or positive feedback")
     next_phrase: str = Field(..., min_length=1, description="AI's conversational response/next phrase")
     corrections: list[Correction] = Field(default=[], description="List of corrections made")
+    session_id: str = Field(..., description="UUID session identifier from request")
+    tokens_used: int = Field(..., ge=0, description="Number of tokens consumed by the request")
+
+
+class StartMessageRequest(BaseModel):
+    """Model for start message generation requests."""
+
+    language: Language = Field(..., description="Target language for the start message")
+    level: Level = Field(..., description="User's proficiency level")
+    session_id: str = Field(..., description="UUID session identifier")
+
+    @field_validator("session_id")
+    @classmethod
+    def validate_session_id_format(cls, v: str) -> str:
+        return _validate_uuid_format(v)
+
+
+class StartMessageResponse(BaseModel):
+    """Model for start message generation responses."""
+
+    message: str = Field(..., min_length=1, description="Generated start message from AI tutor")
     session_id: str = Field(..., description="UUID session identifier from request")
     tokens_used: int = Field(..., ge=0, description="Number of tokens consumed by the request")

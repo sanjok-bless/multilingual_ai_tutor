@@ -3,7 +3,7 @@
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
-from backend.chat.schemas import ChatRequest, ChatResponse
+from backend.chat.schemas import ChatRequest, ChatResponse, StartMessageRequest, StartMessageResponse
 from backend.config import AppConfig
 from backend.errors import LLMError
 from backend.llms.correction_parser import CorrectionParser
@@ -48,13 +48,47 @@ class LangChainClient:
             ai_response = parsed_response.ai_response or "Response received."
             next_phrase = parsed_response.next_phrase or "Please continue."
 
+            # Extract token usage with defensive parsing
+            token_usage = response.response_metadata.get("token_usage", {})
+            tokens_used = 0
+            if isinstance(token_usage, dict) and "total_tokens" in token_usage:
+                tokens_used = max(0, int(token_usage["total_tokens"]))
+
             return ChatResponse(
                 ai_response=ai_response,
                 next_phrase=next_phrase,
                 corrections=parsed_response.corrections,
                 session_id=request.session_id,
-                tokens_used=response.response_metadata.get("token_usage", {}).get("total_tokens", 0),
+                tokens_used=tokens_used,
             )
 
         except Exception as e:
             raise LLMError(f"LLM processing failed: {e}") from e
+
+    async def generate_start_message(self, request: StartMessageRequest) -> StartMessageResponse:
+        """Generate AI tutor start message for conversation initiation."""
+        try:
+            # Generate prompts using PromptManager
+            system_prompt = self.prompt_manager.render_system_prompt(language=request.language, level=request.level)
+            start_prompt = self.prompt_manager.render_start_message(language=request.language, level=request.level)
+
+            # Create LangChain messages
+            messages = [SystemMessage(content=system_prompt), HumanMessage(content=start_prompt)]
+
+            # Make LangChain API call
+            response = await self.langchain_client.ainvoke(messages)
+
+            # Extract token usage with defensive parsing
+            token_usage = response.response_metadata.get("token_usage", {})
+            tokens_used = 0
+            if isinstance(token_usage, dict) and "total_tokens" in token_usage:
+                tokens_used = max(0, int(token_usage["total_tokens"]))
+
+            return StartMessageResponse(
+                message=response.content.strip(),
+                session_id=request.session_id,
+                tokens_used=tokens_used,
+            )
+
+        except Exception as e:
+            raise LLMError(f"Start message generation failed: {e}") from e
