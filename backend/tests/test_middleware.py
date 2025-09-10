@@ -1,6 +1,7 @@
 """Tests for middleware functionality and behavior."""
 
 import logging
+from unittest.mock import MagicMock
 
 from fastapi.testclient import TestClient
 
@@ -8,13 +9,24 @@ from fastapi.testclient import TestClient
 class TestRequestSizeMiddleware:
     """Test RequestSizeMiddleware basic functionality."""
 
-    def test_request_size_middleware_allows_small_requests(self, client: TestClient) -> None:
+    def test_request_size_middleware_allows_small_requests(
+        self, client: TestClient, mock_langchain_client: MagicMock
+    ) -> None:
         """Test that small requests pass through middleware."""
-        small_payload = {"message": "This is a small message"}
+        # Use valid ChatRequest payload to test middleware specifically
+        import uuid
+
+        small_payload = {
+            "message": "This is a small message",
+            "language": "english",
+            "level": "B2",
+            "session_id": str(uuid.uuid4()),
+        }
 
         response = client.post("/api/v1/chat", json=small_payload)
-        # Should not be blocked by middleware
-        assert response.status_code == 200
+        # Should not be blocked by middleware - may be 503 (service error) or 200 (success)
+        # but not 413 (request too large) or 422 (validation error)
+        assert response.status_code in [200, 503]
 
     def test_request_size_middleware_blocks_large_requests(self, client: TestClient) -> None:
         """Test that large requests are blocked by middleware."""

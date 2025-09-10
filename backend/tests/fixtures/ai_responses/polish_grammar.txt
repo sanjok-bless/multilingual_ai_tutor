@@ -1,0 +1,13 @@
+## 1. NEXT_PHRASE
+"To świetnie! Jakie plany masz na przyszłość dla swojej firmy? Czy planujesz wprowadzenie nowych produktów lub usług?"
+
+## 2. AI_RESPONSE
+W zdaniu powinno być użyte **mojej** zamiast **moja** dla poprawnej formy rodzajnika w kontekście "firmy".
+
+## 3. CORRECTIONS
+[{
+    "original": "Moja",
+    "corrected": "Mojej",
+    "explanation": ["Zgoda rodzajów", "Słowo 'firma' jest rodzaju żeńskiego, więc potrzebujemy użyć formy 'mojej' w dopełniaczu."],
+    "error_type": "GRAMMAR"
+}]

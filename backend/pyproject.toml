@@ -24,5 +24,9 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short -m 'not manual'"
 asyncio_mode = "auto"
+markers = [
+    "integration: marks tests as integration tests (may require external dependencies)",
+    "manual: marks tests as manual tests (require explicit environment setup and real API keys)",
+]

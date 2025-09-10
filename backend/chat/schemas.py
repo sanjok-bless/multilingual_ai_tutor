@@ -42,6 +42,13 @@ class ChatRequest(BaseModel):
     level: Level = Field(..., description="User's proficiency level")
     session_id: str = Field(..., description="UUID session identifier")
 
+    @field_validator("message")
+    @classmethod
+    def validate_message_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Message cannot be empty or whitespace only")
+        return v
+
     @field_validator("session_id")
     @classmethod
     def validate_session_id_format(cls, v: str) -> str:

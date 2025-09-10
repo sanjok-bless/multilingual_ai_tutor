@@ -2,7 +2,7 @@
 
 import os
 from collections.abc import Callable
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
@@ -338,16 +338,32 @@ class TestLangChainClient:
 class TestLangChainClientIntegration:
     """Integration tests that can optionally run against real OpenAI API."""
 
+    @pytest.mark.manual
     @pytest.mark.integration
     @pytest.mark.skipif(
-        not os.getenv("OPENAI_API_KEY") or os.getenv("SKIP_INTEGRATION_TESTS") == "true",
-        reason="OpenAI API key not available or integration tests skipped",
+        not os.getenv("REAL_OPENAI_API_KEY"),
+        reason="Real OpenAI API key not provided. Set REAL_OPENAI_API_KEY to run this test manually.",
     )
     async def test_real_openai_api_integration(self) -> None:
-        """Test complete async LangChain flow with real OpenAI API."""
-        # This test validates the actual production code path
-        config = AppConfig()
-        client = LangChainClient(config=config)
+        """Manual test for real OpenAI API integration.
+
+        This test validates the actual production code path against the real OpenAI API.
+        It is marked as 'manual' and requires setting REAL_OPENAI_API_KEY environment variable.
+
+        To run this test manually:
+        1. Set REAL_OPENAI_API_KEY=sk-your-real-api-key
+        2. Run: pytest -m manual backend/tests/test_langchain_client.py::TestLangChainClientIntegration::\
+           test_real_openai_api_integration -v
+
+        Note: This test makes actual API calls and will consume OpenAI tokens.
+        """
+        # Use real API key from environment, bypassing test fixtures
+        real_api_key = os.getenv("REAL_OPENAI_API_KEY")
+
+        # Create config with real API key (bypass test environment mocking)
+        with patch.dict(os.environ, {"OPENAI_API_KEY": real_api_key}, clear=False):
+            config = AppConfig(_env_file=None)
+            client = LangChainClient(config=config)
 
         # Create realistic ChatRequest that should trigger corrections
         test_request = ChatRequest(

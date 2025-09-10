@@ -77,7 +77,11 @@ SUPPORTED_LANGUAGES=["english","ukrainian"]
             "OPENAI_MAX_TOKENS": "750",  # Override .env file value
         }
 
-        with patch.dict(os.environ, override_env):
+        with patch.dict(os.environ, override_env, clear=False):
+            # Remove ENVIRONMENT from current environment to test .env file priority
+            if "ENVIRONMENT" in os.environ:
+                del os.environ["ENVIRONMENT"]
+
             config = AppConfig(_env_file=temp_env_file)
 
             # Values overridden by environment variables

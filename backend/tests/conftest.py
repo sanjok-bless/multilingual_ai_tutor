@@ -1,8 +1,13 @@
-"""Pytest configuration and shared fixtures for backend tests."""
+"""Pytest configuration and shared fixtures for backend tests.
 
-from collections.abc import Callable
+Professional test infrastructure with comprehensive LLM mocking for fast,
+reliable, cost-free test execution without external API dependencies.
+"""
+
+import uuid
+from collections.abc import Callable, Generator
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -14,11 +19,22 @@ from backend.dependencies import get_config
 from backend.main import create_app
 
 
-@pytest.fixture
-def mock_config() -> AppConfig:
+@pytest.fixture(scope="session")
+def mock_config(setup_test_environment: Generator[None]) -> AppConfig:
     """Create a mock configuration for testing."""
+    # Rely on setup_test_environment fixture for environment setup
+    # Use _env_file=None to prevent .env file loading during tests
+    return AppConfig(_env_file=None)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_environment() -> Generator[None]:
+    """Set up test environment variables for all tests to work with PyCharm and other test runners."""
     import os
-    from unittest.mock import patch
+
+    # Set up default test environment variables
+    # These can be overridden by individual tests using patch.dict
+    original_env = os.environ.copy()
 
     test_env = {
         "ENVIRONMENT": "ci",
@@ -26,29 +42,27 @@ def mock_config() -> AppConfig:
         "OPENAI_MODEL": "gpt-4o-mini",
         "OPENAI_MAX_TOKENS": "500",
         "OPENAI_TEMPERATURE": "0.7",
-        "SUPPORTED_LANGUAGES": '["english","ukrainian","polish","german"]',  # JSON format
-        "CORS_ORIGINS": '["http://localhost:8080"]',  # JSON format
+        "SUPPORTED_LANGUAGES": '["english","ukrainian","polish","german"]',
+        "CORS_ORIGINS": '["http://localhost:8080"]',
     }
 
-    # Clear any existing environment variables that might interfere
+    # Update environment with test values
+    os.environ.update(test_env)
 
-    with patch.dict(os.environ, test_env, clear=False):
-        # Use _env_file=None to prevent .env file loading during tests
-        return AppConfig(_env_file=None)
+    yield
+
+    # Restore original environment
+    os.environ.clear()
+    os.environ.update(original_env)
 
 
 @pytest.fixture
 def app(mock_config: AppConfig) -> FastAPI:
     """Create FastAPI app with mocked configuration."""
-    # We need to override the dependency BEFORE creating the app
-    # because create_app() calls get_config() during initialization
-    from unittest.mock import patch
+    # The autouse fixture handles patching get_config globally
+    test_app = create_app()
 
-    # Mock the get_config function at the main.py import location
-    with patch("backend.main.get_config", return_value=mock_config):
-        test_app = create_app()
-
-    # Also set the override for any future calls during the test
+    # Set the dependency override for FastAPI's dependency injection system
     test_app.dependency_overrides[get_config] = lambda: mock_config
     return test_app
 
@@ -108,3 +122,110 @@ def mock_openai_response() -> Callable[[str, int], ChatCompletion]:
         return mock_response
 
     return _create
+
+
+@pytest.fixture
+def valid_chat_request_data() -> dict[str, str]:
+    """Valid chat request data for testing."""
+    return {"message": "I have meeting tomorrow", "language": "english", "level": "B2", "session_id": str(uuid.uuid4())}
+
+
+@pytest.fixture
+def valid_start_request_data() -> dict[str, str]:
+    """Valid start message request data for testing."""
+    return {"language": "english", "level": "B2", "session_id": str(uuid.uuid4())}
+
+
+@pytest.fixture(autouse=True)
+def clear_dependency_caches() -> Generator[None]:
+    """Automatically clear dependency injection caches between tests for isolation."""
+    yield
+
+    # Clear caches after each test to ensure isolation
+    try:
+        from backend.dependencies import get_config, get_langchain_client
+
+        get_config.cache_clear()
+        get_langchain_client.cache_clear()
+    except ImportError:
+        # Dependencies may not exist yet (TDD red phase)
+        pass
+
+
+@pytest.fixture
+def mock_langchain_client(ai_response_loader: Callable[[str], str]) -> Generator[MagicMock]:
+    """Mock LangChain ChatOpenAI client using existing file-based fixtures."""
+    with patch("backend.llms.langchain_client.ChatOpenAI") as mock_openai:
+        # Create async mock response that behaves like real LangChain response
+        mock_response = AsyncMock()
+
+        # Default to perfect message response from existing fixture files
+        try:
+            response_content = ai_response_loader("perfect_message")
+        except FileNotFoundError:
+            # Fallback if file doesn't exist
+            response_content = "## 1. NEXT_PHRASE\nGreat!\n\n## 2. AI_RESPONSE\nPerfect!\n\n## 3. CORRECTIONS\n[]"
+
+        mock_response.content = response_content
+        mock_response.response_metadata = {"token_usage": {"total_tokens": 89}}
+
+        # Configure mock to return the response
+        mock_client_instance = AsyncMock()
+        mock_client_instance.ainvoke.return_value = mock_response
+        mock_openai.return_value = mock_client_instance
+
+        # Store objects for dynamic configuration in tests
+        mock_openai.mock_response = mock_response
+        mock_openai.mock_client_instance = mock_client_instance
+        mock_openai.ai_response_loader = ai_response_loader
+
+        yield mock_openai
+
+
+class MockHelper:
+    """Helper class for configuring mock LangChain responses using file-based fixtures."""
+
+    @staticmethod
+    def configure_response(mock_openai: MagicMock, scenario: str, _unused_responses: dict = None) -> None:
+        """Configure mock to return specific response from fixture files."""
+        ai_response_loader = mock_openai.ai_response_loader
+
+        try:
+            response_content = ai_response_loader(scenario)
+        except FileNotFoundError:
+            # Map scenario names to existing fixture files (for legacy scenarios only)
+            scenario_mapping = {
+                "grammar_error": "grammar_error_single",
+                "perfect_message": "perfect_message",
+                "spelling_error": "spelling_error",
+            }
+            mapped_scenario = scenario_mapping.get(scenario, "perfect_message")
+            try:
+                response_content = ai_response_loader(mapped_scenario)
+            except FileNotFoundError:
+                # Final fallback
+                response_content = "## 1. NEXT_PHRASE\nGreat!\n\n## 2. AI_RESPONSE\nPerfect!\n\n## 3. CORRECTIONS\n[]"
+
+        mock_openai.mock_response.content = response_content
+
+        # Set appropriate token count based on response type
+        token_counts = {"grammar_error": 145, "perfect_message": 89, "spelling_error": 112}
+        tokens = token_counts.get(scenario, 50)
+        mock_openai.mock_response.response_metadata = {"token_usage": {"total_tokens": tokens}}
+
+    @staticmethod
+    def configure_error(mock_openai: MagicMock, error_type: type, error_message: str) -> None:
+        """Configure mock to raise specific error type."""
+        mock_openai.mock_client_instance.ainvoke.side_effect = error_type(error_message)
+
+    @staticmethod
+    def configure_malformed_response(mock_openai: MagicMock, malformed_content: str) -> None:
+        """Configure mock to return malformed response for fallback testing."""
+        mock_openai.mock_response.content = malformed_content
+        mock_openai.mock_response.response_metadata = {"token_usage": {"total_tokens": 25}}
+
+
+@pytest.fixture
+def mock_helper() -> type:
+    """Provide helper class for dynamic mock configuration using file-based fixtures."""
+    return MockHelper
