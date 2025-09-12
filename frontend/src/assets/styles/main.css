@@ -1,0 +1,53 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Custom base styles to match HTML reference */
+@layer base {
+  body {
+    @apply bg-brand-bg font-sans text-brand-text;
+  }
+
+  /* Scrollbar styling for chat container */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-brand-secondary;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-brand-text-muted rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-brand-text;
+  }
+}
+
+/* Component-specific styles */
+@layer components {
+  /* Button styles matching HTML design */
+  .btn-primary {
+    @apply flex items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-brand-primary text-brand-text text-sm font-bold leading-normal tracking-[0.015em] cursor-pointer;
+  }
+
+  .btn-secondary {
+    @apply flex items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-brand-secondary text-brand-text text-sm font-bold leading-normal tracking-[0.015em] cursor-pointer;
+  }
+
+  /* Message bubble styles */
+  .message-bubble-ai {
+    @apply max-w-[360px] rounded-lg px-4 py-3 bg-brand-secondary text-brand-text text-base font-normal leading-normal;
+  }
+
+  .message-bubble-user {
+    @apply max-w-[360px] rounded-lg px-4 py-3 bg-brand-primary text-brand-text text-base font-normal leading-normal;
+  }
+
+  /* Input styles */
+  .chat-input {
+    @apply form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-brand-text focus:outline-0 focus:ring-0 border-none bg-brand-secondary focus:border-none h-full placeholder:text-brand-text-muted px-4 text-base font-normal leading-normal;
+  }
+}
