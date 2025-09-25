@@ -211,6 +211,35 @@ ENVIRONMENT=ci
         with pytest.raises(ValueError):  # JSON parsing error should bubble up
             AppConfig(openai_api_key="sk-test", cors_origins='["http://localhost:3000"')  # Missing closing bracket
 
+    def test_cors_headers_defaults(self) -> None:
+        """Test CORS headers have correct default values."""
+        config = AppConfig(openai_api_key="sk-test")
+        expected_headers = ["Content-Type", "Accept", "Origin", "X-Request-Time", "DNT", "Referer", "User-Agent"]
+        assert config.cors_headers == expected_headers
+
+    def test_cors_headers_custom_values(self) -> None:
+        """Test CORS headers accept custom values."""
+        custom_headers = ["Content-Type", "Authorization", "X-Custom-Header"]
+        config = AppConfig(openai_api_key="sk-test", cors_headers=custom_headers)
+        assert config.cors_headers == custom_headers
+
+    def test_cors_headers_parses_comma_separated_string(self) -> None:
+        """Test CORS headers can parse comma-separated string format."""
+        headers_string = "Content-Type,Accept,Authorization"
+        config = AppConfig(openai_api_key="sk-test", cors_headers=headers_string)
+        assert config.cors_headers == ["Content-Type", "Accept", "Authorization"]
+
+    def test_cors_headers_validates_not_empty(self) -> None:
+        """Test CORS headers cannot be empty."""
+        with pytest.raises(ValueError, match="CORS_HEADERS cannot be empty"):
+            AppConfig(openai_api_key="sk-test", cors_headers=[])
+
+    def test_cors_headers_handles_whitespace_in_string(self) -> None:
+        """Test CORS headers handles whitespace in comma-separated strings."""
+        headers_string = " Content-Type , Accept , Authorization "
+        config = AppConfig(openai_api_key="sk-test", cors_headers=headers_string)
+        assert config.cors_headers == ["Content-Type", "Accept", "Authorization"]
+
     def test_max_request_size_mb_boundary_values(self) -> None:
         """Test max request size validation at boundary values."""
         # Valid positive values

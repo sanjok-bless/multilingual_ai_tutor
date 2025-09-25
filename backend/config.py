@@ -18,6 +18,10 @@ class AppConfig(BaseSettings):
     # Application settings
     environment: Environment = Field(default="dev", description="Environment (dev/prod/ci)")
     cors_origins: list[str] = Field(default=["http://localhost:8080"], description="CORS allowed origins")
+    cors_headers: list[str] = Field(
+        default=["Content-Type", "Accept", "Origin", "X-Request-Time", "DNT", "Referer", "User-Agent"],
+        description="CORS allowed headers",
+    )
 
     # OpenAI settings
     openai_api_key: str = Field(..., description="OpenAI API key")
@@ -102,6 +106,20 @@ class AppConfig(BaseSettings):
                 raise ValueError(
                     f"CORS_ORIGINS contains invalid origin '{origin}' that must start with http:// or https://"
                 )
+        return v
+
+    @field_validator("cors_headers", mode="before")
+    @classmethod
+    def parse_cors_headers(cls, v: str | list[str]) -> list[str]:
+        if isinstance(v, str):
+            return [header.strip() for header in v.split(",")]
+        return v
+
+    @field_validator("cors_headers")
+    @classmethod
+    def validate_cors_headers_not_empty(cls, v: list[str]) -> list[str]:
+        if not v:
+            raise ValueError("CORS_HEADERS cannot be empty")
         return v
 
     @field_validator("max_request_size_mb")
