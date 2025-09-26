@@ -31,15 +31,17 @@ repos:
     hooks:
     -   id: eslint-frontend
         name: ESLint Frontend
-        entry: frontend/node_modules/.bin/eslint
-        language: node
+        entry: npm run lint:ci
+        language: system
         files: ^frontend/.*\.(vue|js|jsx)$
-        pass_filenames: true
+        pass_filenames: false
+        args: [--prefix, frontend]
         # Fast local security scanning handled by ESLint security plugins
 
     -   id: prettier-frontend
         name: Prettier Frontend
-        entry: frontend/node_modules/.bin/prettier --write
-        language: node
+        entry: npm run format:ci
+        language: system
         files: ^frontend/.*\.(vue|js|jsx|css|md|json)$
-        pass_filenames: true
+        pass_filenames: false
+        args: [--prefix, frontend]
