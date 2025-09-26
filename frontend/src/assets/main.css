@@ -39,15 +39,40 @@
 
   /* Message bubble styles */
   .message-bubble-ai {
-    @apply max-w-[360px] rounded-lg px-4 py-3 bg-brand-secondary text-brand-text text-base font-normal leading-normal;
+    @apply max-w-[360px] md:max-w-[480px] lg:max-w-[560px] xl:max-w-[600px] rounded-lg px-4 py-3 bg-brand-secondary text-brand-text text-base font-normal leading-normal;
   }
 
   .message-bubble-user {
-    @apply max-w-[360px] rounded-lg px-4 py-3 bg-brand-primary text-brand-text text-base font-normal leading-normal;
+    @apply max-w-[360px] md:max-w-[480px] lg:max-w-[560px] xl:max-w-[600px] rounded-lg px-4 py-3 bg-brand-primary text-brand-text text-base font-normal leading-normal;
+  }
+
+  .message-bubble-error {
+    @apply max-w-[360px] md:max-w-[480px] lg:max-w-[560px] xl:max-w-[600px] rounded-lg px-4 py-3 bg-red-50 border border-red-200 text-red-800;
   }
 
   /* Input styles */
   .chat-input {
     @apply form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-brand-text focus:outline-0 focus:ring-0 border-none bg-brand-secondary focus:border-none h-full placeholder:text-brand-text-muted px-4 text-base font-normal leading-normal;
+  }
+
+  /* Avatar styles with background images */
+  .avatar-base {
+    @apply bg-center bg-no-repeat aspect-square bg-cover rounded-full;
+  }
+
+  .avatar-user {
+    @apply bg-gradient-to-br from-slate-200 to-gray-300 flex items-center justify-center text-slate-700 font-semibold;
+  }
+
+  .avatar-user-icon {
+    @apply text-lg;
+  }
+
+  .avatar-user-initials {
+    @apply text-sm font-bold uppercase;
+  }
+
+  .avatar-ai {
+    background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA_3CfgewsqBvVr73h_r0q-QltU3iycuC5PaEog3FDW1JvwbuDlcEGo1BH8d-aIH9SbaFThQOKFvnATlVrKUoNUMUeqa_wrR8RTMFLu6X_UszTEV-veWJ0JhZAmwF3LKPUcaiWNGxRR6RPDYW0ISNZhRwq3e6jOK5OqiS6ziVqRmOFcvVJ2D3BuLoTv_WQTJIAbSQF5vDPX5eZgUBt4fz-49SrL0PT1eCtommtfRrwmMfP8Y6vYzJ1tzByHgbV5u9hss1NWP0tWyPI');
   }
 }
