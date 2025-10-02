@@ -394,15 +394,15 @@ class TestRequestSizeAndLimits:
     """Test request size limits and boundary conditions."""
 
     def test_maximum_reasonable_message_size(self, client: TestClient, mock_langchain_client: MagicMock) -> None:
-        """Test handling of reasonably large messages."""
-        # Test with large but reasonable message (1KB)
-        large_message = "This is a test message. " * 50  # ~1KB
+        """Test handling of reasonably large messages within limit."""
+        # Test with large but reasonable message (450 chars, within 500 limit)
+        large_message = "This is a test message. " * 18  # 432 chars, well within limit
 
         request_data = {"message": large_message, "language": "english", "level": "B2", "session_id": str(uuid.uuid4())}
 
         response = client.post("/api/v1/chat", json=request_data)
 
-        # Should handle reasonable large messages
+        # Should handle reasonable large messages within the 500 char limit
         assert response.status_code in [200, 503]
 
     @pytest.mark.parametrize(

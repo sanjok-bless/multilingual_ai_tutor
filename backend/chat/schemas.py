@@ -1,8 +1,9 @@
 """Pydantic schemas and data models for chat functionality."""
 
 import uuid
+from typing import Annotated
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 from backend.enums import ErrorType, Language, Level
 
@@ -15,6 +16,10 @@ def _validate_uuid_format(v: str) -> str:
         msg = "session_id must be a valid UUID format"
         raise ValueError(msg) from e
     return v
+
+
+# Type alias for user message with validation constraints
+UserMessage = Annotated[str, StringConstraints(min_length=1, max_length=500, strip_whitespace=True)]
 
 
 class Correction(BaseModel):
@@ -37,18 +42,11 @@ class Correction(BaseModel):
 class ChatRequest(BaseModel):
     """Model for incoming chat requests."""
 
-    message: str = Field(..., min_length=1, description="User's message to be processed")
+    message: UserMessage = Field(..., description="User's message to be processed")
     language: Language = Field(..., description="Target language for correction")
     level: Level = Field(..., description="User's proficiency level")
     session_id: str = Field(..., description="UUID session identifier")
     context_messages: list[dict] = Field(default=[], description="Previous conversation messages for context")
-
-    @field_validator("message")
-    @classmethod
-    def validate_message_not_empty(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("Message cannot be empty or whitespace only")
-        return v
 
     @field_validator("session_id")
     @classmethod

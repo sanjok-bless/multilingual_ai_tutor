@@ -1,8 +1,10 @@
 """Tests for chat endpoint."""
 
 import logging
+import uuid
 from unittest.mock import MagicMock
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -118,3 +120,160 @@ class TestConfigEndpointNegativePaths:
         # DELETE should not be allowed
         response = client.delete("/api/v1/config")
         assert response.status_code == 405
+
+
+class TestChatRequestMessageLengthValidation:
+    """Test message length validation for ChatRequest schema."""
+
+    def test_message_exactly_500_chars_accepted(self, client: TestClient, mock_langchain_client: MagicMock) -> None:
+        """Test that message with exactly 500 characters is accepted."""
+        message_500 = "a" * 500
+        request_data = {
+            "message": message_500,
+            "language": "english",
+            "level": "B2",
+            "session_id": str(uuid.uuid4()),
+        }
+
+        response = client.post("/api/v1/chat", json=request_data)
+        assert response.status_code in [200, 503], "500 char message should be accepted"
+
+    def test_message_499_chars_accepted(self, client: TestClient, mock_langchain_client: MagicMock) -> None:
+        """Test that message with 499 characters is accepted."""
+        message_499 = "a" * 499
+        request_data = {
+            "message": message_499,
+            "language": "english",
+            "level": "B2",
+            "session_id": str(uuid.uuid4()),
+        }
+
+        response = client.post("/api/v1/chat", json=request_data)
+        assert response.status_code in [200, 503], "499 char message should be accepted"
+
+    def test_message_501_chars_rejected(self, client: TestClient, mock_langchain_client: MagicMock) -> None:
+        """Test that message exceeding 500 characters is rejected."""
+        message_501 = "a" * 501
+        request_data = {
+            "message": message_501,
+            "language": "english",
+            "level": "B2",
+            "session_id": str(uuid.uuid4()),
+        }
+
+        response = client.post("/api/v1/chat", json=request_data)
+        assert response.status_code == 422, "501 char message should be rejected with validation error"
+
+        error_data = response.json()
+        assert "detail" in error_data
+
+    def test_message_1000_chars_rejected(self, client: TestClient, mock_langchain_client: MagicMock) -> None:
+        """Test that significantly oversized message is rejected."""
+        message_1000 = "a" * 1000
+        request_data = {
+            "message": message_1000,
+            "language": "english",
+            "level": "B2",
+            "session_id": str(uuid.uuid4()),
+        }
+
+        response = client.post("/api/v1/chat", json=request_data)
+        assert response.status_code == 422, "1000 char message should be rejected"
+
+    def test_message_whitespace_stripped_before_validation(
+        self, client: TestClient, mock_langchain_client: MagicMock
+    ) -> None:
+        """Test that whitespace is stripped before length validation."""
+        # Message with leading/trailing spaces that becomes valid after stripping
+        message_with_spaces = "   " + ("a" * 494) + "   "  # 500 total chars, 494 after strip
+        request_data = {
+            "message": message_with_spaces,
+            "language": "english",
+            "level": "B2",
+            "session_id": str(uuid.uuid4()),
+        }
+
+        response = client.post("/api/v1/chat", json=request_data)
+        assert response.status_code in [200, 503], "Should accept after stripping whitespace"
+
+    def test_message_only_whitespace_rejected_after_stripping(
+        self, client: TestClient, mock_langchain_client: MagicMock
+    ) -> None:
+        """Test that message with only whitespace is rejected after stripping."""
+        message_whitespace = "   " * 100  # Only spaces
+        request_data = {
+            "message": message_whitespace,
+            "language": "english",
+            "level": "B2",
+            "session_id": str(uuid.uuid4()),
+        }
+
+        response = client.post("/api/v1/chat", json=request_data)
+        assert response.status_code == 422, "Whitespace-only message should be rejected"
+
+    @pytest.mark.parametrize(
+        "unicode_message,char_count",
+        [
+            ("Hello 🌍" * 71, 497),  # 7 chars × 71 = 497 (emoji counts as 1 char)
+            ("Привіт" * 83, 498),  # 6 chars × 83 = 498 (Cyrillic)
+            ("你好世界" * 125, 500),  # 4 chars × 125 = 500 (Chinese)
+            ("café" * 125, 500),  # 4 chars × 125 = 500 (accented characters)
+        ],
+        ids=["emoji_497", "cyrillic_498", "chinese_500", "accented_500"],
+    )
+    def test_message_unicode_character_counting(
+        self, unicode_message: str, char_count: int, client: TestClient, mock_langchain_client: MagicMock
+    ) -> None:
+        """Test that Unicode characters are counted correctly (not by bytes)."""
+        assert len(unicode_message) == char_count, "Test data verification"
+
+        request_data = {
+            "message": unicode_message,
+            "language": "english",
+            "level": "B2",
+            "session_id": str(uuid.uuid4()),
+        }
+
+        response = client.post("/api/v1/chat", json=request_data)
+        assert response.status_code in [200, 503], f"Should accept {char_count} Unicode chars"
+
+    @pytest.mark.parametrize(
+        "unicode_message,char_count",
+        [
+            ("Hello 🌍" * 72, 504),  # 7 chars × 72 = 504 (exceeds limit)
+            ("你好世界" * 126, 504),  # 4 chars × 126 = 504 (exceeds limit)
+            ("Привіт світ" * 46, 506),  # 11 chars × 46 = 506 (exceeds limit)
+        ],
+        ids=["emoji_504", "chinese_504", "cyrillic_506"],
+    )
+    def test_message_unicode_over_limit_rejected(
+        self, unicode_message: str, char_count: int, client: TestClient, mock_langchain_client: MagicMock
+    ) -> None:
+        """Test that Unicode messages exceeding 500 chars are rejected."""
+        assert len(unicode_message) == char_count, "Test data verification"
+
+        request_data = {
+            "message": unicode_message,
+            "language": "english",
+            "level": "B2",
+            "session_id": str(uuid.uuid4()),
+        }
+
+        response = client.post("/api/v1/chat", json=request_data)
+        assert response.status_code == 422, f"Should reject {char_count} Unicode chars"
+
+    def test_message_mixed_unicode_at_boundary(self, client: TestClient, mock_langchain_client: MagicMock) -> None:
+        """Test mixed Unicode scripts at exactly 500 character boundary."""
+        # Mix ASCII, emoji, Cyrillic, Chinese - exactly 500 chars
+        mixed_message = "Hello🌍" + "Привіт" + "你好" + ("a" * 486)  # 6+6+2+486 = 500
+        assert len(mixed_message) == 500, "Test data verification"
+
+        request_data = {
+            "message": mixed_message,
+            "language": "english",
+            "level": "B2",
+            "session_id": str(uuid.uuid4()),
+        }
+
+        response = client.post("/api/v1/chat", json=request_data)
+        assert response.status_code in [200, 503], "Should accept exactly 500 mixed Unicode chars"
