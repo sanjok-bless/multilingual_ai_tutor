@@ -1,5 +1,7 @@
 // === CHAT WORKFLOW ACTIONS ===
 
+import { transformMessagesForContext } from '@/utils/messageTransform.js'
+
 export const sendMessage = async (
   { commit, dispatch, getters, state },
   { content }
@@ -32,11 +34,19 @@ export const sendMessage = async (
     }
 
     const apiService = await import('@/services/api.js')
+
+    // Transform messages to minimal payload (type + content only)
+    const contextMessages = transformMessagesForContext(
+      currentSession.messages || [],
+      state.app.contextChatLimit
+    )
+
     const response = await apiService.default.sendChatMessage({
       session_id: currentSession.sessionId,
       message: content.trim(),
       language: currentSession.language,
       level: currentSession.level,
+      context_messages: contextMessages,
     })
 
     commit('APP_SET_SUCCESS', '/chat')
@@ -45,8 +55,6 @@ export const sendMessage = async (
 
     const aiMessage = {
       type: 'ai',
-      content:
-        response.ai_response || response.message || 'No response received',
       ai_response: response.ai_response,
       next_phrase: response.next_phrase,
       corrections: response.corrections || [],
@@ -110,10 +118,18 @@ export const requestStartMessage = async ({
     commit('APP_CLEAR_ERROR')
 
     const apiService = await import('@/services/api.js')
+
+    // Transform messages to minimal payload (type + content only)
+    const contextMessages = transformMessagesForContext(
+      currentSession.messages || [],
+      state.app.contextStartLimit
+    )
+
     const response = await apiService.default.requestStartMessage({
       session_id: currentSession.sessionId,
       language: currentSession.language,
       level: currentSession.level,
+      context_messages: contextMessages,
     })
 
     commit('APP_SET_SUCCESS', '/start')
@@ -169,7 +185,7 @@ export const retryConnection = async ({ dispatch, state, commit }) => {
   }
 
   const lastEndpoint = state.app.lastErrorEndpoint
-  if (lastEndpoint === '/languages') {
+  if (lastEndpoint === '/config') {
     commit('APP_INCREMENT_RETRY_ATTEMPTS')
     dispatch('loadAvailableLanguages')
   } else if (lastEndpoint === '/start') {

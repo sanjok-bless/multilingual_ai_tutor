@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from backend.chat.schemas import ChatRequest, ChatResponse, StartMessageRequest, StartMessageResponse
 from backend.dependencies import ConfigDep, LangChainDep
 from backend.errors import LLMError
+from backend.schemas import ConfigResponse
 
 router = APIRouter()
 
@@ -33,7 +34,11 @@ async def start_conversation(request: StartMessageRequest, client: LangChainDep)
         ) from e
 
 
-@router.get("/languages")
-async def get_languages(config: ConfigDep) -> list[str]:
-    """Get supported languages."""
-    return config.supported_languages
+@router.get("/config", response_model=ConfigResponse)
+async def get_config(config: ConfigDep) -> ConfigResponse:
+    """Get application configuration including supported languages and context limits."""
+    return ConfigResponse(
+        languages=config.supported_languages,
+        context_chat_limit=config.context_chat_messages_num * 2,
+        context_start_limit=config.context_start_messages_num * 2,
+    )

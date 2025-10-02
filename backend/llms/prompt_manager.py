@@ -8,6 +8,7 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from backend.enums import Language, Level
 from backend.errors import TemplateNotFoundError
+from backend.llms.context_processor import extract_context_with_user_validated_ai
 
 
 class PromptManager:
@@ -47,12 +48,32 @@ class PromptManager:
         template = self.load_template("system.j2")
         return template.render(language=language.value, level=level.value)
 
-    def render_tutoring_prompt(self, user_message: str, language: Language, level: Level) -> str:
-        """Render tutoring prompt."""
+    def render_tutoring_prompt(
+        self, user_message: str, language: Language, level: Level, context_messages: list[dict] = None, limit: int = 20
+    ) -> str:
+        """Render tutoring prompt with optional context."""
         template = self.load_template("tutoring.j2")
-        return template.render(user_message=user_message, language=language.value, level=level.value)
 
-    def render_start_message(self, language: Language, level: Level) -> str:
-        """Render level-appropriate welcome message."""
+        # Process context through validation logic
+        validated_context = extract_context_with_user_validated_ai(context_messages, limit)
+
+        # Remove last user message from context to avoid duplication with current message
+        if validated_context and validated_context[-1].get("type") == "user":
+            context_for_history = validated_context[:-1]
+        else:
+            context_for_history = validated_context
+
+        return template.render(
+            user_message=user_message, language=language.value, level=level.value, context_messages=context_for_history
+        )
+
+    def render_start_message(
+        self, language: Language, level: Level, context_messages: list[dict] = None, limit: int = 10
+    ) -> str:
+        """Render level-appropriate welcome message with optional context."""
         template = self.load_template("start_message.j2")
-        return template.render(language=language.value, level=level.value)
+
+        # Process context through validation logic
+        validated_context = extract_context_with_user_validated_ai(context_messages, limit)
+
+        return template.render(language=language.value, level=level.value, context_messages=validated_context)

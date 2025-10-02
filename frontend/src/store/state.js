@@ -45,6 +45,8 @@ export default () => ({
     isRetrying: false,
     retryAttempts: 0,
     maxRetries: 3,
+    contextChatLimit: 40,
+    contextStartLimit: 20,
   },
 })
 

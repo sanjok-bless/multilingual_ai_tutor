@@ -184,3 +184,73 @@ Ready for advanced {{ language }} practice?
 
         # Template should provide clear structure guidance
         assert "1." in result and "2." in result and "3." in result
+
+    def test_render_tutoring_prompt_without_context(self, prompt_manager: PromptManager) -> None:
+        """Test tutoring prompt renders correctly without context messages."""
+        result = prompt_manager.render_tutoring_prompt(
+            user_message="Hello world", language=Language.EN, level=Level.B1, context_messages=None
+        )
+
+        assert "Hello world" in result
+        assert "Previous Conversation" not in result
+
+        # Test with explicit empty list
+        result_empty = prompt_manager.render_tutoring_prompt(
+            user_message="Hello world", language=Language.EN, level=Level.B1, context_messages=[]
+        )
+
+        assert "Hello world" in result_empty
+        assert "Previous Conversation" not in result_empty
+
+    def test_render_tutoring_prompt_with_context(self, prompt_manager: PromptManager) -> None:
+        """Test tutoring prompt includes context messages when provided."""
+        context = [
+            {"type": "user", "content": "I have meeting tomorrow"},
+            {"type": "ai", "content": "That's great! What time?"},
+            {"type": "user", "content": "At 10 AM"},
+            {"type": "ai", "content": "Perfect. Good luck!"},
+            {"type": "user", "content": "Thank you"},
+        ]
+
+        result = prompt_manager.render_tutoring_prompt(
+            user_message="Can you help me prepare?", language=Language.EN, level=Level.B2, context_messages=context
+        )
+
+        # Context section should be present
+        assert "Previous Conversation" in result
+
+        # Historical context messages should appear (excluding last user message)
+        assert "I have meeting tomorrow" in result
+        assert "That's great! What time?" in result
+        assert "At 10 AM" in result
+        assert "Perfect. Good luck!" in result
+        # Last user message from context should NOT appear in history (filtered out)
+        assert result.count("Thank you") == 0
+
+        # Current message should be present with explicit header
+        assert "Current User Message to Analyze" in result
+        assert "Can you help me prepare?" in result
+
+    def test_render_tutoring_prompt_truncates_to_20_messages(self, prompt_manager: PromptManager) -> None:
+        """Test tutoring prompt truncates context to last 20 messages."""
+        # Create 25 messages with unique prefixes to avoid substring matching issues
+        context = [{"type": "user" if i % 2 == 0 else "ai", "content": f"Msg_{i:03d}"} for i in range(25)]
+
+        result = prompt_manager.render_tutoring_prompt(
+            user_message="Final message", language=Language.EN, level=Level.B1, context_messages=context
+        )
+
+        # First 5 messages (0-4) should be truncated
+        assert "Msg_000" not in result
+        assert "Msg_001" not in result
+        assert "Msg_002" not in result
+        assert "Msg_003" not in result
+        assert "Msg_004" not in result
+
+        # Last 20 messages (5-24) are processed, but last user message (Msg_024) is filtered
+        assert "Msg_005" in result
+        assert "Msg_023" in result  # Last AI message before filtering
+        assert "Msg_024" not in result  # Filtered as last user message
+
+        # Current message should be present
+        assert "Final message" in result

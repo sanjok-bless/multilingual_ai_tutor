@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from backend.enums import Language
 
 # Type aliases for better type safety
-Environment = Literal["dev", "prod", "ci"]
+type Environment = Literal["dev", "prod", "ci"]
 
 
 class AppConfig(BaseSettings):
@@ -37,6 +37,10 @@ class AppConfig(BaseSettings):
     # Prompt settings
     prompts_directory: str = Field(default="backend/prompts", description="Directory containing prompt templates")
     prompt_validation_enabled: bool = Field(default=True, description="Whether to validate prompt templates at startup")
+
+    # Context message settings
+    context_chat_messages_num: int = Field(default=20, description="Maximum context messages for /chat endpoint")
+    context_start_messages_num: int = Field(default=10, description="Maximum context messages for /start endpoint")
 
     # Request validation settings
     max_request_size_mb: int = Field(default=1, description="Maximum request size in MB")
@@ -127,4 +131,18 @@ class AppConfig(BaseSettings):
     def validate_max_request_size_positive(cls, v: int) -> int:
         if v <= 0:
             raise ValueError("MAX_REQUEST_SIZE_MB must be positive")
+        return v
+
+    @field_validator("context_chat_messages_num")
+    @classmethod
+    def validate_context_chat_messages_positive(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("CONTEXT_CHAT_MESSAGES_NUM must be positive")
+        return v
+
+    @field_validator("context_start_messages_num")
+    @classmethod
+    def validate_context_start_messages_positive(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("CONTEXT_START_MESSAGES_NUM must be positive")
         return v

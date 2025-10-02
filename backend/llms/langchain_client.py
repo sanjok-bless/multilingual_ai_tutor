@@ -25,6 +25,13 @@ class LangChainClient:
         self.prompt_manager = PromptManager()
         self.correction_parser = CorrectionParser()
 
+    def _extract_tokens(self, response_metadata: dict) -> int:
+        """Extract token usage with defensive parsing."""
+        token_usage = response_metadata.get("token_usage", {})
+        if isinstance(token_usage, dict) and "total_tokens" in token_usage:
+            return max(0, int(token_usage["total_tokens"]))
+        return 0
+
     async def process_chat(self, request: ChatRequest) -> ChatResponse:
         """Process chat request and return structured response."""
         try:
@@ -32,7 +39,11 @@ class LangChainClient:
             system_prompt = self.prompt_manager.render_system_prompt(language=request.language, level=request.level)
 
             user_prompt = self.prompt_manager.render_tutoring_prompt(
-                user_message=request.message, language=request.language, level=request.level
+                user_message=request.message,
+                language=request.language,
+                level=request.level,
+                context_messages=request.context_messages,
+                limit=self.config.context_chat_messages_num,
             )
 
             # Create LangChain messages
@@ -49,10 +60,7 @@ class LangChainClient:
             next_phrase = parsed_response.next_phrase or "Please continue."
 
             # Extract token usage with defensive parsing
-            token_usage = response.response_metadata.get("token_usage", {})
-            tokens_used = 0
-            if isinstance(token_usage, dict) and "total_tokens" in token_usage:
-                tokens_used = max(0, int(token_usage["total_tokens"]))
+            tokens_used = self._extract_tokens(response.response_metadata)
 
             return ChatResponse(
                 ai_response=ai_response,
@@ -70,7 +78,12 @@ class LangChainClient:
         try:
             # Generate prompts using PromptManager
             system_prompt = self.prompt_manager.render_system_prompt(language=request.language, level=request.level)
-            start_prompt = self.prompt_manager.render_start_message(language=request.language, level=request.level)
+            start_prompt = self.prompt_manager.render_start_message(
+                language=request.language,
+                level=request.level,
+                context_messages=request.context_messages,
+                limit=self.config.context_start_messages_num,
+            )
 
             # Create LangChain messages
             messages = [SystemMessage(content=system_prompt), HumanMessage(content=start_prompt)]
@@ -79,10 +92,7 @@ class LangChainClient:
             response = await self.langchain_client.ainvoke(messages)
 
             # Extract token usage with defensive parsing
-            token_usage = response.response_metadata.get("token_usage", {})
-            tokens_used = 0
-            if isinstance(token_usage, dict) and "total_tokens" in token_usage:
-                tokens_used = max(0, int(token_usage["total_tokens"]))
+            tokens_used = self._extract_tokens(response.response_metadata)
 
             return StartMessageResponse(
                 message=response.content.strip(),

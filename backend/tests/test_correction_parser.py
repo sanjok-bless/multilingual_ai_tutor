@@ -10,7 +10,7 @@ from backend.enums import ErrorType
 from backend.llms.correction_parser import CorrectionParser, ParsedResponse
 
 # Type alias for ai_response_loader fixture
-AIResponseLoader = Callable[[str], str]
+type AIResponseLoader = Callable[[str], str]
 
 
 class TestCorrectionParser:

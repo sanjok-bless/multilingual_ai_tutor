@@ -79,13 +79,20 @@ class ApiService {
   /**
    * Send a chat message to the AI tutor
    */
-  async sendChatMessage({ session_id, message, language, level }) {
+  async sendChatMessage({
+    session_id,
+    message,
+    language,
+    level,
+    context_messages = [],
+  }) {
     try {
       const response = await apiClient.post('/chat', {
         session_id,
         message,
         language,
         level,
+        context_messages,
       })
 
       // Validate response structure
@@ -100,12 +107,18 @@ class ApiService {
   /**
    * Request a start message from the AI tutor
    */
-  async requestStartMessage({ session_id, language, level }) {
+  async requestStartMessage({
+    session_id,
+    language,
+    level,
+    context_messages = [],
+  }) {
     try {
       const response = await apiClient.post('/start', {
         session_id,
         language,
         level,
+        context_messages,
       })
 
       // Validate response structure
@@ -118,14 +131,14 @@ class ApiService {
   }
 
   /**
-   * Get list of supported languages
+   * Get application configuration including languages and context limits
    */
-  async getSupportedLanguages() {
+  async getConfig() {
     try {
-      const response = await apiClient.get('/languages')
+      const response = await apiClient.get('/config')
       return response.data
     } catch (error) {
-      console.error('Error fetching supported languages:', error)
+      console.error('Error fetching configuration:', error)
       throw error
     }
   }

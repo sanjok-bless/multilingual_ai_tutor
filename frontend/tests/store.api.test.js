@@ -26,7 +26,7 @@ const actions = {
 
 // Mock the API service
 const mockApiService = {
-  getSupportedLanguages: vi.fn(),
+  getConfig: vi.fn(),
   requestStartMessage: vi.fn(),
   sendChatMessage: vi.fn(),
 }
@@ -60,10 +60,11 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
 
   describe('API Connection Management', () => {
     it('should handle successful API connections', async () => {
-      mockApiService.getSupportedLanguages.mockResolvedValue([
-        'english',
-        'ukrainian',
-      ])
+      mockApiService.getConfig.mockResolvedValue({
+        languages: ['english', 'ukrainian'],
+        context_chat_limit: 40,
+        context_start_limit: 20,
+      })
 
       await store.dispatch('loadAvailableLanguages')
 
@@ -74,19 +75,23 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
 
     it('should handle API connection failures', async () => {
       const error = new Error('Network timeout')
-      mockApiService.getSupportedLanguages.mockRejectedValue(error)
+      mockApiService.getConfig.mockRejectedValue(error)
 
       await store.dispatch('loadAvailableLanguages')
 
       expect(store.state.app.isConnected).toBe(false)
       expect(store.getters.hasError).toBe(true)
       expect(store.getters.currentError.message).toBe('Network timeout')
-      expect(store.state.app.lastErrorEndpoint).toBe('/languages')
+      expect(store.state.app.lastErrorEndpoint).toBe('/config')
     })
 
     it('should track connection status across multiple endpoints', async () => {
       // Test /languages success
-      mockApiService.getSupportedLanguages.mockResolvedValue(['english'])
+      mockApiService.getConfig.mockResolvedValue({
+        languages: ['english'],
+        context_chat_limit: 40,
+        context_start_limit: 20,
+      })
       await store.dispatch('loadAvailableLanguages')
       expect(store.state.app.isConnected).toBe(true)
 
@@ -118,9 +123,7 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
   describe('Language Loading with Retry', () => {
     it('should retry language loading on failure', async () => {
       // Setup initial failure
-      mockApiService.getSupportedLanguages.mockRejectedValue(
-        new Error('Initial failure')
-      )
+      mockApiService.getConfig.mockRejectedValue(new Error('Initial failure'))
 
       await store.dispatch('loadAvailableLanguages')
 
@@ -129,10 +132,11 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
       expect(store.state.app.retryAttempts).toBe(0) // User actions don't auto-increment
 
       // Simulate retry
-      mockApiService.getSupportedLanguages.mockResolvedValue([
-        'english',
-        'ukrainian',
-      ])
+      mockApiService.getConfig.mockResolvedValue({
+        languages: ['english', 'ukrainian'],
+        context_chat_limit: 40,
+        context_start_limit: 20,
+      })
 
       await store.dispatch('retryConnection')
 
@@ -146,7 +150,7 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
     })
 
     it('should handle max retries for language loading', async () => {
-      mockApiService.getSupportedLanguages.mockRejectedValue(
+      mockApiService.getConfig.mockRejectedValue(
         new Error('Persistent failure')
       )
 
@@ -173,9 +177,7 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
 
     it('should reset retry attempts on successful language loading', async () => {
       // Setup failure and retry attempts
-      mockApiService.getSupportedLanguages.mockRejectedValue(
-        new Error('Failure')
-      )
+      mockApiService.getConfig.mockRejectedValue(new Error('Failure'))
       await store.dispatch('loadAvailableLanguages')
       await store.dispatch('retryConnection')
       await store.dispatch('retryConnection')
@@ -183,10 +185,11 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
       expect(store.state.app.retryAttempts).toBe(2)
 
       // Successful retry
-      mockApiService.getSupportedLanguages.mockResolvedValue([
-        'english',
-        'ukrainian',
-      ])
+      mockApiService.getConfig.mockResolvedValue({
+        languages: ['english', 'ukrainian'],
+        context_chat_limit: 40,
+        context_start_limit: 20,
+      })
       await store.dispatch('retryConnection')
 
       // Wait for async operations to complete
@@ -320,7 +323,8 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
 
       const aiMessage = store.getters.allMessages[1]
       expect(aiMessage.type).toBe('ai')
-      expect(aiMessage.content).toBe(mockResponse.ai_response)
+      expect(aiMessage.ai_response).toBe(mockResponse.ai_response)
+      expect(aiMessage.next_phrase).toBe(mockResponse.next_phrase)
       expect(aiMessage.corrections).toEqual(mockResponse.corrections)
       expect(store.state.chat.currentCorrections).toEqual(
         mockResponse.corrections
@@ -413,20 +417,22 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
   describe('Universal Retry Pattern', () => {
     it('should route retries to correct endpoints based on last error', async () => {
       // Test /languages retry routing
-      mockApiService.getSupportedLanguages.mockRejectedValue(
-        new Error('Languages failed')
-      )
+      mockApiService.getConfig.mockRejectedValue(new Error('Languages failed'))
       await store.dispatch('loadAvailableLanguages')
 
-      expect(store.state.app.lastErrorEndpoint).toBe('/languages')
+      expect(store.state.app.lastErrorEndpoint).toBe('/config')
 
-      mockApiService.getSupportedLanguages.mockResolvedValue(['english'])
+      mockApiService.getConfig.mockResolvedValue({
+        languages: ['english'],
+        context_chat_limit: 40,
+        context_start_limit: 20,
+      })
       await store.dispatch('retryConnection')
 
       // Wait for async operations to complete
       await new Promise(resolve => setTimeout(resolve, 0))
 
-      expect(mockApiService.getSupportedLanguages).toHaveBeenCalledTimes(2)
+      expect(mockApiService.getConfig).toHaveBeenCalledTimes(2)
 
       // Test /start retry routing
       const sessionKey = 'session_english_B2'
@@ -459,10 +465,11 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
 
     it('should handle mixed success/failure scenarios', async () => {
       // Languages succeed, start fails, chat succeeds
-      mockApiService.getSupportedLanguages.mockResolvedValue([
-        'english',
-        'ukrainian',
-      ])
+      mockApiService.getConfig.mockResolvedValue({
+        languages: ['english', 'ukrainian'],
+        context_chat_limit: 40,
+        context_start_limit: 20,
+      })
       await store.dispatch('loadAvailableLanguages')
       expect(store.state.app.isConnected).toBe(true)
 
@@ -505,7 +512,7 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
       const timeoutError = new Error('Request timeout')
       timeoutError.code = 'TIMEOUT'
 
-      mockApiService.getSupportedLanguages.mockRejectedValue(timeoutError)
+      mockApiService.getConfig.mockRejectedValue(timeoutError)
       await store.dispatch('loadAvailableLanguages')
 
       expect(store.getters.hasError).toBe(true)
@@ -592,11 +599,11 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
       networkError.code = 'NETWORK_ERROR'
 
       // Test on languages endpoint
-      mockApiService.getSupportedLanguages.mockRejectedValue(networkError)
+      mockApiService.getConfig.mockRejectedValue(networkError)
       await store.dispatch('loadAvailableLanguages')
 
       expect(store.getters.hasError).toBe(true)
-      expect(store.state.app.lastErrorEndpoint).toBe('/languages')
+      expect(store.state.app.lastErrorEndpoint).toBe('/config')
       expect(store.state.app.isConnected).toBe(false)
       expect(store.getters.currentError.message).toContain('Network error')
     })
@@ -623,7 +630,8 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
       await store.dispatch('sendMessage', { content: 'Test' })
 
       const aiMessage = store.getters.allMessages[1]
-      expect(aiMessage.content).toBe('No response received') // Fallback
+      expect(aiMessage.ai_response).toBeUndefined()
+      expect(aiMessage.next_phrase).toBeUndefined()
       expect(aiMessage.corrections).toEqual([]) // Default empty array
     })
 
@@ -650,7 +658,7 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
       await store.dispatch('sendMessage', { content: 'Test' })
 
       const aiMessage = store.getters.allMessages[1]
-      expect(aiMessage.content).toBe('Partial response')
+      expect(aiMessage.ai_response).toBe('Partial response')
       expect(aiMessage.corrections).toEqual([]) // Default
       expect(aiMessage.tokens_used).toBe(0) // Default
       expect(aiMessage.next_phrase).toBeUndefined()
@@ -663,12 +671,11 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
       store.commit('APP_SET_RETRY_ATTEMPTS', 2)
 
       // Setup: Mock successful API response
-      mockApiService.getSupportedLanguages.mockResolvedValue([
-        'english',
-        'ukrainian',
-        'polish',
-        'german',
-      ])
+      mockApiService.getConfig.mockResolvedValue({
+        languages: ['english', 'ukrainian', 'polish', 'german'],
+        context_chat_limit: 40,
+        context_start_limit: 20,
+      })
 
       // Act: Call the loadAvailableLanguages action
       await store.dispatch('loadAvailableLanguages')
@@ -677,7 +684,7 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
       expect(store.state.app.retryAttempts).toBe(0)
 
       // Verify: The API was called successfully
-      expect(mockApiService.getSupportedLanguages).toHaveBeenCalledOnce()
+      expect(mockApiService.getConfig).toHaveBeenCalledOnce()
       expect(store.getters.availableLanguages).toEqual([
         'english',
         'ukrainian',
@@ -690,15 +697,16 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
       // Test: loadAvailableLanguages resets attempts
       store.commit('APP_SET_RETRY_ATTEMPTS', 3)
 
-      mockApiService.getSupportedLanguages.mockResolvedValue([
-        'english',
-        'ukrainian',
-      ])
+      mockApiService.getConfig.mockResolvedValue({
+        languages: ['english', 'ukrainian'],
+        context_chat_limit: 40,
+        context_start_limit: 20,
+      })
       await store.dispatch('loadAvailableLanguages')
 
       // This should PASS - user store resets retry attempts consistently
       expect(store.state.app.retryAttempts).toBe(0)
-      expect(mockApiService.getSupportedLanguages).toHaveBeenCalledOnce()
+      expect(mockApiService.getConfig).toHaveBeenCalledOnce()
 
       // Test: Other endpoint actions follow the same pattern
       store.commit('APP_SET_RETRY_ATTEMPTS', 2)
@@ -735,12 +743,11 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
       store.commit('APP_SET_RETRY_ATTEMPTS', 3)
 
       // Setup: Mock successful API response
-      mockApiService.getSupportedLanguages.mockResolvedValue([
-        'english',
-        'ukrainian',
-        'polish',
-        'german',
-      ])
+      mockApiService.getConfig.mockResolvedValue({
+        languages: ['english', 'ukrainian', 'polish', 'german'],
+        context_chat_limit: 40,
+        context_start_limit: 20,
+      })
 
       // Act: Load available languages successfully
       await store.dispatch('loadAvailableLanguages')
@@ -763,9 +770,7 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
       store.commit('APP_SET_RETRY_ATTEMPTS', 2)
 
       // Setup: Mock API failure
-      mockApiService.getSupportedLanguages.mockRejectedValue(
-        new Error('Network error')
-      )
+      mockApiService.getConfig.mockRejectedValue(new Error('Network error'))
 
       // Act: Attempt to load languages (should fail)
       await store.dispatch('loadAvailableLanguages')
@@ -800,7 +805,7 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
       // but testing async setTimeout behavior with mocks is complex
 
       // What our fix does:
-      // 1. loadAvailableLanguages detects if this was a retry (lastErrorEndpoint === '/languages')
+      // 1. loadAvailableLanguages detects if this was a retry (lastErrorEndpoint === '/config')
       // 2. If it was a retry AND multiple languages loaded, triggers continuation
       // 3. Uses setTimeout to dispatch continueInitializationAfterLanguages
       // 4. That action runs the remaining init steps: initializeDefaults, loadSessionMessages, initializeSession
@@ -848,19 +853,18 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
         message: 'Initial connection failed',
         isRetryable: true,
         timestamp: Date.now(),
-        endpoint: '/languages',
+        endpoint: '/config',
       })
 
-      expect(store.state.app.lastErrorEndpoint).toBe('/languages')
+      expect(store.state.app.lastErrorEndpoint).toBe('/config')
       expect(store.getters.availableLanguages).toEqual(['english']) // Default offline state
 
       // Step 2: Successful retry (this should trigger continuation flow)
-      mockApiService.getSupportedLanguages.mockResolvedValue([
-        'english',
-        'ukrainian',
-        'polish',
-        'german',
-      ])
+      mockApiService.getConfig.mockResolvedValue({
+        languages: ['english', 'ukrainian', 'polish', 'german'],
+        context_chat_limit: 40,
+        context_start_limit: 20,
+      })
 
       await store.dispatch('retryConnection')
 
@@ -879,6 +883,142 @@ describe('Store API Tests - Network Integration & Retry Mechanisms', () => {
 
       // Verify: Multiple languages indicate successful retry from offline mode
       expect(store.getters.isInitialized).toBe(true)
+    })
+  })
+
+  describe('Context Message Limit Enforcement', () => {
+    describe('Chat Endpoint (/chat) Context Limits', () => {
+      beforeEach(() => {
+        mockApiService.sendChatMessage.mockResolvedValue({
+          ai_response: 'Test response',
+          message: 'Test response',
+        })
+      })
+
+      it.each([
+        { total: 0, limit: 20, expected: 1 },
+        { total: 19, limit: 20, expected: 20 },
+        { total: 50, limit: 20, expected: 20 },
+      ])(
+        'should send $expected messages when session has $total messages with limit $limit',
+        async ({ total, limit, expected }) => {
+          const messages = Array.from({ length: total }, (_, i) => ({
+            type: i % 2 === 0 ? 'user' : 'ai',
+            content: `Message ${i}`,
+            next_phrase: i % 2 === 1 ? `Message ${i}` : undefined,
+            timestamp: i,
+          }))
+
+          const sessionKey = 'session_english_B2'
+          store.commit('SESSION_ADD', {
+            sessionKey,
+            sessionData: {
+              sessionId: 'test-session',
+              language: 'english',
+              level: 'B2',
+              messages,
+              lastActivity: Date.now(),
+            },
+          })
+          store.commit('SESSION_SET_CURRENT', sessionKey)
+          store.state.app.contextChatLimit = limit
+
+          await store.dispatch('sendMessage', { content: 'New message' })
+
+          expect(mockApiService.sendChatMessage).toHaveBeenCalled()
+          const apiCall = mockApiService.sendChatMessage.mock.calls[0][0]
+          expect(apiCall.context_messages).toHaveLength(expected)
+        }
+      )
+    })
+
+    describe('Start Endpoint (/start) Context Limits', () => {
+      beforeEach(() => {
+        mockApiService.requestStartMessage.mockResolvedValue({
+          message: 'Hello! Welcome!',
+          start_message: 'Hello! Welcome!',
+        })
+      })
+
+      it.each([
+        { total: 5, limit: 10, expected: 5 },
+        { total: 30, limit: 10, expected: 10 },
+      ])(
+        'should send $expected messages when session has $total messages with limit $limit',
+        async ({ total, limit, expected }) => {
+          const messages = Array.from({ length: total }, (_, i) => ({
+            type: i % 2 === 0 ? 'user' : 'ai',
+            content: `Message ${i}`,
+            next_phrase: i % 2 === 1 ? `Message ${i}` : undefined,
+            timestamp: i,
+          }))
+
+          const sessionKey = 'session_english_B2'
+          store.commit('SESSION_ADD', {
+            sessionKey,
+            sessionData: {
+              sessionId: 'test-session',
+              language: 'english',
+              level: 'B2',
+              messages,
+              lastActivity: Date.now(),
+            },
+          })
+          store.commit('SESSION_SET_CURRENT', sessionKey)
+          store.state.app.contextStartLimit = limit
+
+          await store.dispatch('requestStartMessage')
+
+          expect(mockApiService.requestStartMessage).toHaveBeenCalled()
+          const apiCall = mockApiService.requestStartMessage.mock.calls[0][0]
+          expect(apiCall.context_messages).toHaveLength(expected)
+        }
+      )
+    })
+
+    describe('Integration Tests', () => {
+      it('should respect different limits for chat vs start endpoints', async () => {
+        const messages = Array.from({ length: 50 }, (_, i) => ({
+          type: i % 2 === 0 ? 'user' : 'ai',
+          content: `Message ${i}`,
+          next_phrase: i % 2 === 1 ? `Message ${i}` : undefined,
+          timestamp: i,
+        }))
+
+        const sessionKey = 'session_english_B2'
+        store.commit('SESSION_ADD', {
+          sessionKey,
+          sessionData: {
+            sessionId: 'test-session',
+            language: 'english',
+            level: 'B2',
+            messages,
+            lastActivity: Date.now(),
+          },
+        })
+        store.commit('SESSION_SET_CURRENT', sessionKey)
+        store.state.app.contextChatLimit = 20
+        store.state.app.contextStartLimit = 10
+
+        mockApiService.sendChatMessage.mockResolvedValue({
+          ai_response: 'Chat response',
+          next_phrase: 'AI reply',
+        })
+        await store.dispatch('sendMessage', { content: 'Chat message' })
+
+        expect(mockApiService.sendChatMessage).toHaveBeenCalledOnce()
+        const chatCall = mockApiService.sendChatMessage.mock.calls[0][0]
+        expect(chatCall.context_messages).toHaveLength(20)
+
+        mockApiService.requestStartMessage.mockResolvedValue({
+          message: 'Start message',
+        })
+        await store.dispatch('requestStartMessage')
+
+        expect(mockApiService.requestStartMessage).toHaveBeenCalledOnce()
+        const startCall = mockApiService.requestStartMessage.mock.calls[0][0]
+        expect(startCall.context_messages).toHaveLength(10)
+      })
     })
   })
 })

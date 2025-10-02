@@ -1,6 +1,16 @@
 The user is practicing {{ language }} conversation at {{ level }} proficiency level.
 
-User's message: "{{ user_message }}"
+{% if context_messages and context_messages|length > 0 %}
+## Previous Conversation:
+{% for msg in context_messages %}
+{% if msg.type == 'user' %}User: {{ msg.content }}
+{% else %}AI: {{ msg.content }}
+{% endif %}
+{% endfor %}
+
+{% endif %}
+## Current User Message to Analyze:
+"{{ user_message }}"
 
 You must respond with exactly three components in this order:
 
@@ -32,7 +42,7 @@ For each language error found, provide corrections in this exact JSON-like struc
 IMPORTANT:
 - Replace "Specific Error Type" with the actual grammatical error found (e.g., "Verb Agreement", "Case Error", "Gender Agreement", "Word Order", "Spelling", etc.)
 - Use terminology appropriate for {{ language }} language grammar
-- Write explanations in {{ language }} language{% if language != 'EN' %} (not English){% endif %} for better learning
+- Write explanations in {{ language }} language{% if language != 'english' %} (not English){% endif %} for better learning
 - Be precise about the grammatical concept that needs correction for {{ language }} language
 
 If no corrections are needed, respond with: `[]`

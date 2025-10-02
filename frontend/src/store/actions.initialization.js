@@ -10,16 +10,20 @@ export const loadAvailableLanguages = async ({
 }) => {
   try {
     const apiService = await import('@/services/api.js')
-    const languages = await apiService.default.getSupportedLanguages()
+    const config = await apiService.default.getConfig()
 
-    commit('USER_SET_AVAILABLE_LANGUAGES', languages)
+    commit('USER_SET_AVAILABLE_LANGUAGES', config.languages)
+    commit('APP_SET_CONTEXT_LIMITS', {
+      contextChatLimit: config.context_chat_limit,
+      contextStartLimit: config.context_start_limit,
+    })
 
-    const wasRetry = state.app.lastErrorEndpoint === '/languages'
+    const wasRetry = state.app.lastErrorEndpoint === '/config'
 
-    commit('APP_SET_SUCCESS', '/languages')
+    commit('APP_SET_SUCCESS', '/config')
     commit('APP_RESET_RETRY_ATTEMPTS')
 
-    if (languages.length > 1) {
+    if (config.languages.length > 1) {
       const lastActiveSession = getters.lastActiveSession
       if (lastActiveSession?.language) {
         commit('USER_SET_LANGUAGE', lastActiveSession.language)
@@ -29,28 +33,28 @@ export const loadAvailableLanguages = async ({
       }
     }
 
-    if (wasRetry && languages.length > 1) {
+    if (wasRetry && config.languages.length > 1) {
       setTimeout(async () => {
         try {
           await dispatch('continueInitializationAfterLanguages')
         } catch (error) {
           console.error(
-            'Failed to continue initialization after /languages retry:',
+            'Failed to continue initialization after /config retry:',
             error
           )
         }
       }, 0)
     }
 
-    return { success: true, languages }
+    return { success: true, languages: config.languages }
   } catch (error) {
-    console.error('Error loading available languages:', error)
+    console.error('Error loading configuration:', error)
 
     commit('APP_SET_ERROR', {
-      message: error.message || 'Unable to load language options',
+      message: error.message || 'Unable to load configuration',
       isRetryable: true,
       timestamp: Date.now(),
-      endpoint: '/languages',
+      endpoint: '/config',
     })
 
     commit('USER_SET_AVAILABLE_LANGUAGES', ['english'])
@@ -145,11 +149,8 @@ export const continueInitializationAfterLanguages = async ({ dispatch }) => {
     await dispatch('initializeDefaults')
     await dispatch('loadSessionMessages')
     await dispatch('initializeSessionWithLock')
-    console.log('Initialization resumed and completed after /languages retry')
+    console.log('Initialization resumed and completed after /config retry')
   } catch (error) {
-    console.error(
-      'Error continuing initialization after /languages retry:',
-      error
-    )
+    console.error('Error continuing initialization after /config retry:', error)
   }
 }

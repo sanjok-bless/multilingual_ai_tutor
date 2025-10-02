@@ -491,3 +491,55 @@ class TestStartMessageResponseModel:
                 session_id=str(uuid.uuid4()),
                 tokens_used=-5,
             )
+
+
+class TestContextMessagesValidation:
+    """Test context_messages field validation for ChatRequest and StartMessageRequest."""
+
+    def test_chat_request_with_valid_context_messages(self) -> None:
+        """Test ChatRequest accepts valid context_messages structure."""
+        context = [
+            {"role": "user", "content": "Hello"},
+            {"role": "ai", "content": "Hi there!"},
+            {"role": "user", "content": "How are you?"},
+        ]
+
+        request = ChatRequest(
+            message="I'm doing well",
+            language=Language.EN,
+            level=Level.B1,
+            session_id=str(uuid.uuid4()),
+            context_messages=context,
+        )
+
+        assert request.context_messages == context
+        assert len(request.context_messages) == 3
+        assert request.context_messages[0]["role"] == "user"
+        assert request.context_messages[1]["role"] == "ai"
+
+    def test_chat_request_context_messages_defaults_to_empty_list(self) -> None:
+        """Test ChatRequest context_messages defaults to empty list when omitted."""
+        request = ChatRequest(
+            message="Hello",
+            language=Language.EN,
+            level=Level.B1,
+            session_id=str(uuid.uuid4()),
+            # context_messages omitted
+        )
+
+        assert request.context_messages == []
+        assert isinstance(request.context_messages, list)
+
+    def test_start_message_request_with_context_messages(self) -> None:
+        """Test StartMessageRequest accepts valid context_messages structure."""
+        context = [
+            {"role": "user", "content": "Previous conversation"},
+            {"role": "ai", "content": "Previous response"},
+        ]
+
+        request = StartMessageRequest(
+            language=Language.EN, level=Level.B1, session_id=str(uuid.uuid4()), context_messages=context
+        )
+
+        assert request.context_messages == context
+        assert len(request.context_messages) == 2

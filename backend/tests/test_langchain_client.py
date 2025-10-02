@@ -2,7 +2,7 @@
 
 import os
 from collections.abc import Callable
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 from uuid import uuid4
 
 import pytest
@@ -16,7 +16,7 @@ from backend.errors import LLMError
 from backend.llms.langchain_client import LangChainClient
 
 # Type aliases for fixtures
-AIResponseLoader = Callable[[str], str]
+type AIResponseLoader = Callable[[str], str]
 
 
 class TestLangChainClient:
@@ -396,3 +396,78 @@ class TestLangChainClientIntegration:
 
         except Exception as e:
             pytest.fail(f"LangChain integration failed: {e}")
+
+    @pytest.mark.asyncio
+    async def test_process_chat_passes_context_to_prompt_manager(
+        self, mock_config: AppConfig, mock_langchain_client: Mock, ai_response_loader: AIResponseLoader
+    ) -> None:
+        """Test that process_chat passes context messages to PromptManager."""
+        context = [
+            {"role": "user", "content": "Hello"},
+            {"role": "ai", "content": "Hi there!"},
+        ]
+
+        request = ChatRequest(
+            message="How are you?",
+            language=Language.EN,
+            level=Level.B1,
+            session_id=str(uuid4()),
+            context_messages=context,
+        )
+
+        # Mock LangChain response with async coroutine
+        ai_content = ai_response_loader("perfect_message")
+        mock_response = AIMessage(content=ai_content, response_metadata={"token_usage": {"total_tokens": 100}})
+
+        # Use AsyncMock for async method
+        mock_langchain_client.ainvoke = AsyncMock(return_value=mock_response)
+
+        # Create client and patch PromptManager to track calls
+        client = LangChainClient(config=mock_config, langchain_client=mock_langchain_client)
+
+        with patch.object(
+            client.prompt_manager, "render_tutoring_prompt", wraps=client.prompt_manager.render_tutoring_prompt
+        ) as mock_render:
+            await client.process_chat(request)
+
+            # Verify render_tutoring_prompt was called with context
+            mock_render.assert_called_once()
+            call_kwargs = mock_render.call_args.kwargs
+            assert call_kwargs["context_messages"] == context
+            assert call_kwargs["user_message"] == "How are you?"
+            assert call_kwargs["language"] == Language.EN
+            assert call_kwargs["level"] == Level.B1
+
+    @pytest.mark.asyncio
+    async def test_generate_start_message_passes_context_to_prompt_manager(
+        self, mock_config: AppConfig, mock_langchain_client: Mock
+    ) -> None:
+        """Test that generate_start_message passes context to PromptManager."""
+        context = [
+            {"role": "user", "content": "Previous message"},
+            {"role": "ai", "content": "Previous response"},
+        ]
+
+        request = StartMessageRequest(
+            language=Language.EN, level=Level.B2, session_id=str(uuid4()), context_messages=context
+        )
+
+        # Mock LangChain response with async coroutine
+        mock_response = AIMessage(content="Welcome back!", response_metadata={"token_usage": {"total_tokens": 20}})
+
+        mock_langchain_client.ainvoke = AsyncMock(return_value=mock_response)
+
+        # Create client and patch PromptManager
+        client = LangChainClient(config=mock_config, langchain_client=mock_langchain_client)
+
+        with patch.object(
+            client.prompt_manager, "render_start_message", wraps=client.prompt_manager.render_start_message
+        ) as mock_render:
+            await client.generate_start_message(request)
+
+            # Verify render_start_message was called with context
+            mock_render.assert_called_once()
+            call_kwargs = mock_render.call_args.kwargs
+            assert call_kwargs["context_messages"] == context
+            assert call_kwargs["language"] == Language.EN
+            assert call_kwargs["level"] == Level.B2

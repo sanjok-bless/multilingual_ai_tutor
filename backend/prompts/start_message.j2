@@ -1,12 +1,32 @@
+{% if context_messages and context_messages|length > 0 %}
+Generate a brief, welcoming continuation message in {{ language }} language for a {{ level }} level learner based on the recent conversation.
+
+## Recent Context (last few exchanges):
+{% for msg in context_messages %}
+{% if msg.type == 'user' %}User: {{ msg.content }}
+{% else %}AI: {{ msg.content }}
+{% endif %}
+{% endfor %}
+
+Generate a concise message (2-3 sentences) that briefly acknowledges the conversation and offers a friendly greeting to continue.
+{% else %}
 Generate a concise, friendly, welcoming start message in {{ language }} language for a {{ level }} level learner.
+{% endif %}
 
 Requirements:
 - Write the entire message in {{ language }}
 - Make it appropriate for {{ level }} proficiency level
+{% if context_messages and context_messages|length > 0 %}
+- Focus ONLY on welcoming conversation and engagement
+- DO NOT provide grammar corrections or language corrections in this greeting
+- Ask an engaging question to continue conversation
+{% else %}
 - Include encouraging tone about language practice
 - Mention you're an AI language tutor who will help with corrections
 - Ask an engaging question to start conversation
+{% endif %}
 - Keep vocabulary and grammar appropriate for {{ level }} level
+- Be warm, friendly, and conversational (not instructional)
 
 {% if level in ['A1', 'A2'] %}
 Focus on:

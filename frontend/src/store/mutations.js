@@ -99,6 +99,14 @@ const APP_SET_RETRY_ATTEMPTS = (state, attempts) => {
   state.app.retryAttempts = attempts
 }
 
+const APP_SET_CONTEXT_LIMITS = (
+  state,
+  { contextChatLimit, contextStartLimit }
+) => {
+  if (contextChatLimit) state.app.contextChatLimit = contextChatLimit
+  if (contextStartLimit) state.app.contextStartLimit = contextStartLimit
+}
+
 export default {
   // User Domain
   USER_SET_AVAILABLE_LANGUAGES,
@@ -125,4 +133,5 @@ export default {
   APP_INCREMENT_RETRY_ATTEMPTS,
   APP_RESET_RETRY_ATTEMPTS,
   APP_SET_RETRY_ATTEMPTS,
+  APP_SET_CONTEXT_LIMITS,
 }

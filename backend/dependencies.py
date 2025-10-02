@@ -23,5 +23,7 @@ def get_langchain_client() -> LangChainClient:
 
 
 # Type aliases for dependency injection
+# Note: Using traditional assignment instead of 'type' statement because FastAPI
+# requires runtime-available type objects for Annotated dependency injection
 ConfigDep = Annotated[AppConfig, Depends(get_config)]
 LangChainDep = Annotated[LangChainClient, Depends(get_langchain_client)]

@@ -18,16 +18,28 @@ def test_chat_endpoint(client: TestClient, mock_langchain_client: MagicMock) -> 
     assert isinstance(error_data["detail"], list)
 
 
-def test_languages_endpoint(client: TestClient, mock_langchain_client: MagicMock) -> None:
-    """Test languages endpoint returns supported languages."""
-    response = client.get("/api/v1/languages")
+def test_config_endpoint(client: TestClient, mock_langchain_client: MagicMock) -> None:
+    """Test config endpoint returns configuration including languages and context limits."""
+    response = client.get("/api/v1/config")
 
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
-    assert len(data) > 0
+    assert isinstance(data, dict)
+
+    # Check languages field
+    assert "languages" in data
+    assert isinstance(data["languages"], list)
+    assert len(data["languages"]) > 0
     expected_languages = {"english", "ukrainian", "polish", "german"}
-    assert set(data) == expected_languages
+    assert set(data["languages"]) == expected_languages
+
+    # Check context limit fields
+    assert "context_chat_limit" in data
+    assert "context_start_limit" in data
+    assert isinstance(data["context_chat_limit"], int)
+    assert isinstance(data["context_start_limit"], int)
+    assert data["context_chat_limit"] == 40  # 20 * 2
+    assert data["context_start_limit"] == 20  # 10 * 2
 
 
 class TestChatEndpointNegativePaths:
@@ -90,40 +102,19 @@ class TestChatEndpointNegativePaths:
         assert response.status_code in [200, 422]
 
 
-class TestLanguagesEndpointNegativePaths:
-    """Test languages endpoint negative scenarios."""
+class TestConfigEndpointNegativePaths:
+    """Test config endpoint negative scenarios."""
 
-    def test_languages_endpoint_invalid_http_methods(
-        self, client: TestClient, mock_langchain_client: MagicMock
-    ) -> None:
-        """Test languages endpoint rejects invalid HTTP methods."""
-        # POST should not be allowed on languages endpoint
-        response = client.post("/api/v1/languages")
+    def test_config_endpoint_invalid_http_methods(self, client: TestClient, mock_langchain_client: MagicMock) -> None:
+        """Test config endpoint rejects invalid HTTP methods."""
+        # POST should not be allowed on config endpoint
+        response = client.post("/api/v1/config")
         assert response.status_code == 405  # Method Not Allowed
 
         # PUT should not be allowed
-        response = client.put("/api/v1/languages")
+        response = client.put("/api/v1/config")
         assert response.status_code == 405
 
         # DELETE should not be allowed
-        response = client.delete("/api/v1/languages")
+        response = client.delete("/api/v1/config")
         assert response.status_code == 405
-
-    def test_languages_endpoint_with_request_body(self, client: TestClient, mock_langchain_client: MagicMock) -> None:
-        """Test languages endpoint ignores request body on GET."""
-        # GET with JSON body should still work (body should be ignored)
-        response = client.request("GET", "/api/v1/languages", json={"some": "data"})
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-
-    def test_languages_endpoint_with_query_parameters(
-        self, client: TestClient, mock_langchain_client: MagicMock
-    ) -> None:
-        """Test languages endpoint ignores query parameters."""
-        response = client.get("/api/v1/languages?filter=english&limit=2")
-        assert response.status_code == 200
-        data = response.json()
-        # Should return all languages regardless of query params
-        expected_languages = {"english", "ukrainian", "polish", "german"}
-        assert set(data) == expected_languages

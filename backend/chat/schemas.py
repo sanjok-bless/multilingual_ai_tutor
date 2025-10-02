@@ -41,6 +41,7 @@ class ChatRequest(BaseModel):
     language: Language = Field(..., description="Target language for correction")
     level: Level = Field(..., description="User's proficiency level")
     session_id: str = Field(..., description="UUID session identifier")
+    context_messages: list[dict] = Field(default=[], description="Previous conversation messages for context")
 
     @field_validator("message")
     @classmethod
@@ -71,6 +72,7 @@ class StartMessageRequest(BaseModel):
     language: Language = Field(..., description="Target language for the start message")
     level: Level = Field(..., description="User's proficiency level")
     session_id: str = Field(..., description="UUID session identifier")
+    context_messages: list[dict] = Field(default=[], description="Previous conversation messages for context")
 
     @field_validator("session_id")
     @classmethod
