@@ -1,8 +1,4 @@
-"""Pytest configuration and shared fixtures for backend tests.
-
-Professional test infrastructure with comprehensive LLM mocking for fast,
-reliable, cost-free test execution without external API dependencies.
-"""
+"""Pytest configuration and shared fixtures for backend tests."""
 
 import uuid
 from collections.abc import Callable, Generator
@@ -17,6 +13,10 @@ from openai.types.chat import ChatCompletion
 from backend.config import AppConfig
 from backend.dependencies import get_config
 from backend.main import create_app
+
+# =============================================================================
+# SESSION-SCOPED FIXTURES
+# =============================================================================
 
 
 @pytest.fixture(scope="session")
@@ -56,6 +56,11 @@ def setup_test_environment() -> Generator[None]:
     os.environ.update(original_env)
 
 
+# =============================================================================
+# APP-LEVEL FIXTURES
+# =============================================================================
+
+
 @pytest.fixture
 def app(mock_config: AppConfig) -> FastAPI:
     """Create FastAPI app with mocked configuration."""
@@ -70,6 +75,28 @@ def app(mock_config: AppConfig) -> FastAPI:
 @pytest.fixture
 def client(app: FastAPI) -> TestClient:
     return TestClient(app)
+
+
+# =============================================================================
+# TEST DATA FIXTURES
+# =============================================================================
+
+
+@pytest.fixture
+def valid_chat_request_data() -> dict[str, str]:
+    """Valid chat request data for testing."""
+    return {"message": "I have meeting tomorrow", "language": "english", "level": "B2", "session_id": str(uuid.uuid4())}
+
+
+@pytest.fixture
+def valid_start_request_data() -> dict[str, str]:
+    """Valid start message request data for testing."""
+    return {"language": "english", "level": "B2", "session_id": str(uuid.uuid4())}
+
+
+# =============================================================================
+# LLM FIXTURES
+# =============================================================================
 
 
 @pytest.fixture
@@ -92,64 +119,6 @@ def ai_response_loader() -> Callable[[str], str]:
         return fixture_path.read_text(encoding="utf-8")
 
     return _load
-
-
-@pytest.fixture
-def mock_openai_response() -> Callable[[str, int], ChatCompletion]:
-    """Create mock OpenAI ChatCompletion responses."""
-
-    def _create(content: str, tokens: int = 100) -> ChatCompletion:
-        """Create a mock OpenAI ChatCompletion response."""
-        mock_response = Mock(spec=ChatCompletion)
-
-        # Mock the message structure
-        mock_message = Mock()
-        mock_message.content = content
-
-        mock_choice = Mock()
-        mock_choice.message = mock_message
-
-        mock_response.choices = [mock_choice]
-
-        # Mock usage information
-        mock_usage = Mock()
-        mock_usage.prompt_tokens = tokens // 2
-        mock_usage.completion_tokens = tokens // 2
-        mock_usage.total_tokens = tokens
-
-        mock_response.usage = mock_usage
-
-        return mock_response
-
-    return _create
-
-
-@pytest.fixture
-def valid_chat_request_data() -> dict[str, str]:
-    """Valid chat request data for testing."""
-    return {"message": "I have meeting tomorrow", "language": "english", "level": "B2", "session_id": str(uuid.uuid4())}
-
-
-@pytest.fixture
-def valid_start_request_data() -> dict[str, str]:
-    """Valid start message request data for testing."""
-    return {"language": "english", "level": "B2", "session_id": str(uuid.uuid4())}
-
-
-@pytest.fixture(autouse=True)
-def clear_dependency_caches() -> Generator[None]:
-    """Automatically clear dependency injection caches between tests for isolation."""
-    yield
-
-    # Clear caches after each test to ensure isolation
-    try:
-        from backend.dependencies import get_config, get_langchain_client
-
-        get_config.cache_clear()
-        get_langchain_client.cache_clear()
-    except ImportError:
-        # Dependencies may not exist yet (TDD red phase)
-        pass
 
 
 @pytest.fixture
@@ -229,3 +198,93 @@ class MockHelper:
 def mock_helper() -> type:
     """Provide helper class for dynamic mock configuration using file-based fixtures."""
     return MockHelper
+
+
+# =============================================================================
+# MOCK FACTORIES
+# =============================================================================
+
+
+@pytest.fixture
+def mock_openai_response() -> Callable[[str, int], ChatCompletion]:
+    """Create mock OpenAI ChatCompletion responses."""
+
+    def _create(content: str, tokens: int = 100) -> ChatCompletion:
+        """Create a mock OpenAI ChatCompletion response."""
+        mock_response = Mock(spec=ChatCompletion)
+
+        # Mock the message structure
+        mock_message = Mock()
+        mock_message.content = content
+
+        mock_choice = Mock()
+        mock_choice.message = mock_message
+
+        mock_response.choices = [mock_choice]
+
+        # Mock usage information
+        mock_usage = Mock()
+        mock_usage.prompt_tokens = tokens // 2
+        mock_usage.completion_tokens = tokens // 2
+        mock_usage.total_tokens = tokens
+
+        mock_response.usage = mock_usage
+
+        return mock_response
+
+    return _create
+
+
+# =============================================================================
+# UTILITY FIXTURES
+# =============================================================================
+
+
+@pytest.fixture(autouse=True)
+def clear_dependency_caches() -> Generator[None]:
+    """Automatically clear dependency injection caches between tests for isolation."""
+    yield
+
+    # Clear caches after each test to ensure isolation
+    try:
+        from backend.dependencies import get_config, get_langchain_client
+
+        get_config.cache_clear()
+        get_langchain_client.cache_clear()
+    except ImportError:
+        # Dependencies may not exist yet (TDD red phase)
+        pass
+
+
+# =============================================================================
+# MIDDLEWARE FIXTURES
+# =============================================================================
+
+
+@pytest.fixture
+def test_app_factory() -> Callable:
+    """Factory for creating test FastAPI apps with custom middleware configurations.
+
+    Example usage:
+        def test_my_middleware(test_app_factory):
+            app = test_app_factory(
+                (MyMiddleware, {"config": "value"}),
+                (OtherMiddleware, {})
+            )
+    """
+
+    def _create(*middleware_configs: tuple) -> FastAPI:
+        """Create FastAPI app with specified middleware.
+
+        Args:
+            *middleware_configs: Tuples of (middleware_class, kwargs_dict)
+
+        Returns:
+            Configured FastAPI application
+        """
+        test_app = FastAPI()
+        for middleware_class, kwargs in middleware_configs:
+            test_app.add_middleware(middleware_class, **kwargs)
+        return test_app
+
+    return _create

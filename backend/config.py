@@ -45,6 +45,9 @@ class AppConfig(BaseSettings):
     # Request validation settings
     max_request_size_mb: int = Field(default=1, description="Maximum request size in MB")
 
+    # Logging settings
+    log_level: str = Field(default="INFO", description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)")
+
     model_config = SettingsConfigDict(env_file=[".env", "backend/.env"], env_file_encoding="utf-8", extra="ignore")
 
     @field_validator("environment")
@@ -146,3 +149,12 @@ class AppConfig(BaseSettings):
         if v <= 0:
             raise ValueError("CONTEXT_START_MESSAGES_NUM must be positive")
         return v
+
+    @field_validator("log_level")
+    @classmethod
+    def validate_log_level(cls, v: str) -> str:
+        valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        v_upper = v.upper()
+        if v_upper not in valid_levels:
+            raise ValueError(f"LOG_LEVEL must be one of {valid_levels}")
+        return v_upper

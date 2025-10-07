@@ -1,34 +1,24 @@
 """FastAPI application for Multilingual AI Tutor."""
 
 import sys
-from collections.abc import Callable
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
 
+from backend import observability
 from backend.api.v1.chat import router as chat_router
 from backend.api.v1.health import router as health_router
 from backend.api.v1.metrics import router as metrics_router
 from backend.dependencies import get_config
-
-
-class RequestSizeMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: FastAPI, max_size_bytes: int) -> None:
-        super().__init__(app)
-        self.max_size = max_size_bytes
-
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Response]) -> Response:
-        if request.headers.get("content-length"):
-            content_length = int(request.headers["content-length"])
-            if content_length > self.max_size:
-                raise HTTPException(413, "Request too large")
-        return await call_next(request)
+from backend.middleware import AccessLoggingMiddleware, RequestSizeMiddleware
 
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
     config = get_config()
+
+    # Configure structured logging
+    observability.configure_logging(config.log_level)
 
     # Disable docs endpoints in production environment
     docs_url = "/docs" if config.environment == "dev" else None
@@ -50,6 +40,7 @@ def create_app() -> FastAPI:
         allow_headers=config.cors_headers,
     )
 
+    app.add_middleware(AccessLoggingMiddleware)
     app.add_middleware(RequestSizeMiddleware, max_size_bytes=config.max_request_size_mb * 1024 * 1024)
 
     app.include_router(health_router, prefix="/api/v1")
@@ -59,10 +50,6 @@ def create_app() -> FastAPI:
     return app
 
 
-def get_application() -> FastAPI:
-    return create_app()
-
-
 def _is_test_environment() -> bool:
     return "pytest" in sys.modules
 
@@ -70,10 +57,10 @@ def _is_test_environment() -> bool:
 # Only create app instance when not in test environment or when explicitly called
 # This prevents configuration loading during test discovery/imports
 if not _is_test_environment():
-    app = get_application()
+    app = create_app()
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, access_log=False)

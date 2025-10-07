@@ -16,7 +16,7 @@ extend-select = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101"]  # Allow assert in tests
+"tests/*" = ["S101", "S603"]  # Allow assert and subprocess in tests
 "main.py" = ["S104"]  # Allow binding to all interfaces in development
 
 [tool.pytest.ini_options]
@@ -29,4 +29,5 @@ asyncio_mode = "auto"
 markers = [
     "integration: marks tests as integration tests (may require external dependencies)",
     "manual: marks tests as manual tests (require explicit environment setup and real API keys)",
+    "slow: marks tests as slow tests (spawn real servers, network I/O)",
 ]
