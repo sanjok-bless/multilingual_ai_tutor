@@ -3,9 +3,14 @@
 import uuid
 from typing import Annotated
 
-from pydantic import BaseModel, Field, StringConstraints, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
 
+from backend import observability
 from backend.enums import ErrorType, Language, Level
+from backend.errors import PromptInjectionError
+from backend.security.prompt_injection_validator import validate_context_messages, validate_message
+
+logger = observability.get_logger(__name__)
 
 
 def _validate_uuid_format(v: str) -> str:
@@ -53,6 +58,39 @@ class ChatRequest(BaseModel):
     def validate_session_id_format(cls, v: str) -> str:
         return _validate_uuid_format(v)
 
+    @model_validator(mode="after")
+    def validate_prompt_injection(self) -> "ChatRequest":
+        """Validate message and context against prompt injection patterns."""
+        # Validate message field
+        try:
+            validate_message(self.message)
+        except PromptInjectionError:
+            logger.warning(
+                "Prompt injection blocked",
+                session_id=self.session_id,
+                language=self.language.value,
+                level=self.level.value,
+                field="message",
+                message_preview=self.message or "",
+            )
+            raise
+
+        # Validate context_messages field
+        try:
+            validate_context_messages(self.context_messages)
+        except PromptInjectionError as e:
+            logger.warning(
+                "Prompt injection blocked",
+                session_id=self.session_id,
+                language=self.language.value,
+                level=self.level.value,
+                field="context_messages",
+                message_preview=e.injected_content or "",
+            )
+            raise
+
+        return self
+
 
 class ChatResponse(BaseModel):
     """Model for AI chat responses."""
@@ -76,6 +114,24 @@ class StartMessageRequest(BaseModel):
     @classmethod
     def validate_session_id_format(cls, v: str) -> str:
         return _validate_uuid_format(v)
+
+    @model_validator(mode="after")
+    def validate_prompt_injection(self) -> "StartMessageRequest":
+        """Validate context messages against prompt injection patterns."""
+        try:
+            validate_context_messages(self.context_messages)
+        except PromptInjectionError as e:
+            logger.warning(
+                "Prompt injection blocked",
+                session_id=self.session_id,
+                language=self.language.value,
+                level=self.level.value,
+                field="context_messages",
+                message_preview=e.injected_content or "",
+            )
+            raise
+
+        return self
 
 
 class StartMessageResponse(BaseModel):

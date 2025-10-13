@@ -24,5 +24,5 @@ class ConfigResponse(BaseModel):
     """Configuration response with supported languages and context limits."""
 
     languages: list[str] = Field(..., description="List of supported language codes")
-    context_chat_limit: int = Field(..., description="Maximum context messages for chat endpoint (frontend value)")
-    context_start_limit: int = Field(..., description="Maximum context messages for start endpoint (frontend value)")
+    context_chat_limit: int = Field(..., description="Maximum context messages for chat endpoint")
+    context_start_limit: int = Field(..., description="Maximum context messages for start endpoint")
