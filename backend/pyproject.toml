@@ -16,11 +16,11 @@ extend-select = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "S603"]  # Allow assert and subprocess in tests
+"tutor_ai/tests/*" = ["S101", "S603"]  # Allow assert and subprocess in tests
 "main.py" = ["S104"]  # Allow binding to all interfaces in development
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tutor_ai/tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

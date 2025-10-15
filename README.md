@@ -8,7 +8,7 @@ Multilingual AI Tutor driven by LLM – an AI-powered language coach that helps 
 ```bash
 # Backend
 pip install uv && uv pip install -r backend/requirements.txt
-uvicorn backend.main:app --reload
+PYTHONPATH=backend uvicorn tutor_ai.main:app --reload
 
 # Frontend (new terminal)
 npm install --prefix frontend
@@ -58,7 +58,7 @@ pre-commit install
 ### Local Development
 ```bash
 # Run backend (Terminal 1)
-uvicorn backend.main:app --reload
+PYTHONPATH=backend uvicorn tutor_ai.main:app --reload
 
 # Run frontend (Terminal 2)
 npm run dev --prefix frontend
@@ -70,8 +70,11 @@ npm run dev --prefix frontend
 
 ### Testing & Code Quality
 ```bash
-# Backend tests
-python -m pytest
+# Backend tests (from project root)
+PYTHONPATH=backend python -m pytest --rootdir=backend backend/tutor_ai/tests/
+
+# Or alternatively (simpler)
+cd backend && python -m pytest
 
 # Frontend tests
 npm run test --prefix frontend
